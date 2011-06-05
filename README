@@ -22,6 +22,9 @@ Draft plan for book.
     - Singly-linked lists
         - Mutable versus Immutable
         - code
+    - List operations
+        - map / fmap
+        - filter
     - Doubly-linked lists?
         - mutable... immutable?
         - pointers
@@ -48,6 +51,9 @@ Draft plan for book.
         - List to tree
         - Binary search
         - Interlude: explanation of O(log n)
+    - Operations
+        - map (fmap)
+        - Data::Visitor
     - Balanced trees
         - When trees go wrong
         - Red black algorithm
@@ -68,6 +74,8 @@ Draft plan for book.
         - backed by red-black-tree
             - an Enfilade!
         - Zipper
+        - fmap
+        - search
     
     - Exercise: ???
 
@@ -85,7 +93,7 @@ Draft plan for book.
         - Quad-tree
         - intersecting Row/Column trees
         - Zippers?
-
+            - may not be relevant here, as we don't have a linear, non-cyclic, inorder traversal
         
     - Exercise: ???
 
