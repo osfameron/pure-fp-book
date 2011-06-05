@@ -81,6 +81,7 @@ Draft plan for book.
         - Array of Arrays
     - How to do grids immutably?
         - List of lists?
+        - Dictionary lookup of (x,y) coordinates
         - Quad-tree
         - intersecting Row/Column trees
         - Zippers?
