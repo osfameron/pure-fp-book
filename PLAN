@@ -1,0 +1,105 @@
+Draft plan for book.
+
+1. Introduction
+
+    - Why purely functional data-structures?
+        - easier to reason about
+        - higher-level features: Undo
+        - concurrency
+        - memory sharing
+        - case study: Git
+    - Survey of existing work (Okasaki, etc.)
+    - Aim of book 
+        - to provide a grounding to Purely Functional data-structures 
+        - for the working programmer (not for CompSci audience)
+        - with examples in Modern Perl
+
+2. Lists
+
+    - A mutable list: Perl's array (a Vector type)
+        - advantages
+        - disadvantages
+    - Singly-linked lists
+        - Mutable versus Immutable
+        - code
+    - Doubly-linked lists?
+        - mutable... immutable?
+        - pointers
+        - code
+        - rewrite with Data::Zipper
+
+    - Exercise: implement a turing machine with a zipper onto an infinite
+        (in both directions) list
+
+    - Show me the Code!: simple code-examples of the code presented in the
+        chapter, as review summary, or for the impatient.
+
+3. Objects, Trees and Dictionaries
+
+    - Immutable Moose objects
+        - updating child objects: the problem
+        - Zipper!
+    - Compare trees
+    - Dictionaries
+        - Mutable versus Immutable
+        - Hash
+        - Tree.  Why?
+    - Simple Binary tree
+        - List to tree
+        - Binary search
+        - Interlude: explanation of O(log n)
+    - Balanced trees
+        - When trees go wrong
+        - Red black algorithm
+        - Pattern matching
+        - Insertion
+        - Deletion
+    - Zippers
+
+    - Exercise: ???
+
+    - Show me the code!
+
+4. Strings
+
+    - Mutable strings
+    - Piece-table / rope
+        - backed by singly-linked list
+        - backed by red-black-tree
+            - an Enfilade!
+        - Zipper
+    
+    - Exercise: ???
+
+    - Show me the code!
+    
+5. Grids
+
+    (Not certain how to approach this yet!)
+
+    - Mutable grids
+        - Array of Arrays
+    - How to do grids immutably?
+        - List of lists?
+        - Quad-tree
+        - intersecting Row/Column trees
+        - Zippers?
+
+        
+    - Exercise: ???
+
+    - Show me the code!
+
+6. Graphs
+
+    - OO style mutable graph, modeled with nodes
+        - how to implement as purely-functional...?
+        - ... while retaining sharing
+    - Adjacency matrix
+        - algorithms
+
+    - Exercise: ???
+
+    - Show me the code!
+
+7. Conclusion
