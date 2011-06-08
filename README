@@ -5,7 +5,7 @@ Working Title(s)
         c) ... for the Impure
         d) ... for the Mutable, Rank-Scented Many
 
-    a. is a bit ghetto.  
+    a. was the original idea, but is perhaps a bit ghetto.  May be better to be a generic algorithms book, with appendices for each language?
     b. steals 2 classic FP text titles for the price of 1!
     d. is from Shakespeare, but perhaps a little rude ;-)
 
@@ -45,12 +45,15 @@ Draft plan for book.
     - Exercise: implement a turing machine with a zipper onto an infinite
         (in both directions) list
 
-    - Show me the Code!: simple code-examples of the code presented in the
-        chapter, as review summary, or for the impatient.
+    - Show me the Code!: implementations of the above concepts in
+        - Modern Perl with Moose
+        - Javascript
+        - Ruby
+        - Python
 
 3. Objects, Trees and Dictionaries
 
-    - Immutable Moose objects
+    - Immutable OO objects
         - updating child objects: the problem
         - Zipper!
     - Compare trees
