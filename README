@@ -6,18 +6,23 @@ This is a working title.  Other possibilities are:
         b) ... for the Working Programmer
         c) ... for the Mutable, Rank-Scented Many
 
-    a. was the original idea, but is perhaps a bit ghetto.  May be better to be a generic algorithms book, with appendices for each language?
+    a. was the original idea, but is perhaps a bit ghetto.  May be better to be
+       a generic algorithms book, with appendices for each language?
     b. steals 2 classic FP text titles for the price of 1!
     c. is from Shakespeare, but perhaps a little rude ;-)
 
 Intended Audience
 -----------------
-Programmers using dynamic languages (Perl, Python, Ruby, Javascript), who are interested in functional programming
+Programmers using dynamic languages (Perl, Python, Ruby, Javascript), who are
+interested in functional programming
 
-The most celebrated book on these is Chris Okasaki's celebrated "Purely Functional Data Structures", which, though very readable, is targeted
-towards the computer science academic with a background in functional programming.  While the current book is not intended as a tutorial on
-functional programming from the ground up, it will work its way up to more complex structures, provide practical motivations and exercises
-where appropriate, and avoid mathematical terminology.
+The most celebrated book on these is Chris Okasaki's celebrated "Purely
+Functional Data Structures", which, though very readable, is targeted towards
+the computer science academic with a background in functional programming.
+While the current book is not intended as a tutorial on functional programming
+from the ground up, it will work its way up to more complex structures, provide
+practical motivations and exercises where appropriate, and avoid mathematical
+terminology.
 
 Reviewer Guidelines
 -------------------
@@ -38,7 +43,8 @@ Contributing
 ------------
 This book will always be licensed under a Creative Commons license (see LICENSE)
 
-Please feel free to fork this book on github, and submit pull requests (or bug reports) of suggestions and contributions.
+Please feel free to fork this book on github, and submit pull requests (or bug
+reports) of suggestions and contributions.
 
 Draft outline
 -------------
