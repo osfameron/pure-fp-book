@@ -1,15 +1,47 @@
-Working Title(s)
+Purely Functional Data Structures for the Impure
+------------------------------------------------
+This is a working title.  Other possibilities are:
     - Purely Functional Data Structures...
         a) ... for the Perl Programmer
         b) ... for the Working Programmer
-        c) ... for the Impure
-        d) ... for the Mutable, Rank-Scented Many
+        c) ... for the Mutable, Rank-Scented Many
 
     a. was the original idea, but is perhaps a bit ghetto.  May be better to be a generic algorithms book, with appendices for each language?
     b. steals 2 classic FP text titles for the price of 1!
-    d. is from Shakespeare, but perhaps a little rude ;-)
+    c. is from Shakespeare, but perhaps a little rude ;-)
 
-Draft plan for book.
+Intended Audience
+-----------------
+Programmers using dynamic languages (Perl, Python, Ruby, Javascript), who are interested in functional programming
+
+The most celebrated book on these is Chris Okasaki's celebrated "Purely Functional Data Structures", which, though very readable, is targeted
+towards the computer science academic with a background in functional programming.  While the current book is not intended as a tutorial on
+functional programming from the ground up, it will work its way up to more complex structures, provide practical motivations and exercises
+where appropriate, and avoid mathematical terminology.
+
+Reviewer Guidelines
+-------------------
+I appreciate all suggestions and critiques, especially:
+
+ * is the work accurate?
+ * is the work complete?
+ * is the work coherent?
+ * are there missing sections and subjects?
+ * are the examples effective?
+ * is the flow of information appropriate?
+
+Building this Book
+------------------
+Please read the INSTALL file in this distribution for more details
+
+Contributing
+------------
+This book will always be licensed under a Creative Commons license (see LICENSE)
+
+Please feel free to fork this book on github, and submit pull requests (or bug reports) of suggestions and contributions.
+
+Draft outline
+-------------
 
 1. Introduction
 
@@ -36,6 +68,7 @@ Draft plan for book.
     - List operations
         - map / fmap
         - filter
+    - Interlude: Tail recursion, TCE
     - Doubly-linked lists?
         - mutable... immutable?
         - pointers

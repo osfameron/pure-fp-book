@@ -37,7 +37,7 @@ C<head>) and a pointer to the rest of the list (the C<tail>).
 For example, the word C<"hello"> is made up of the list of characters:
 
     [h.]->[e.]->[l.]->[l.]->[o ]
-     ↑    ↑
+     ^    ^
    head   tail
 
 The head is the letter C<"h">, and the tail is the list
@@ -149,9 +149,3 @@ So let's add a little sugar:
     }
 
 =end programlisting
-
-=begin comment
-
- L < some_section > to include sections/some_section.pod
-
-=end comment
