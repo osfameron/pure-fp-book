@@ -1,0 +1,157 @@
+=head0 Lists
+
+The linked list is one of the oldest data structures in computing, dating
+back to the mid-1950s.  While it's a collection type, similar to an Array,
+it makes very different tradeoffs.
+
+In a dynamic programming language like Perl, Ruby, Python, of Javascript,
+we very rarely feel the need to look beyond the builtin array types, as they
+are usually Good Enough.  However, the linked list I<is> a fundamental building
+block, and we'll see that it is key for understanding concepts such as:
+
+=over 4
+
+=item recursive thinking
+
+=item data-sharing
+
+=item persistent data structures
+
+=back
+
+Beyond this, linked lists do have some features that arrays don't
+
+=over 4
+
+=item handling circular data
+
+=item infinite lists and streams
+
+=item possibility for automatic parallelisation
+
+=back
+
+A linked list is a structure that contains an element (often called the
+C<head>) and a pointer to the rest of the list (the C<tail>).
+
+For example, the word C<"hello"> is made up of the list of characters:
+
+    [h.]->[e.]->[l.]->[l.]->[o ]
+     ↑    ↑
+   head   tail
+
+The head is the letter C<"h">, and the tail is the list
+
+    [e.]->[l.]->[l.]->[o ]
+
+So we've seen lists of 4 and 5 elements.  You could grow the list arbitrarily
+large, by continuing to add links to new elements.  Let's compare this with
+an array:
+
+     1  2  3  4  5
+    [h][e][l][l][o]
+
+The array has 5 slots, stored next to each other in memory.  This means that
+we can immediately access any of them in any order.  However, if we want to 
+add a new element, we'd have to resize the array.
+
+ TODO: more stuff on arrays
+
+How about smaller lists?
+
+    1 element:   [o ]
+    0 elements:  ()
+
+The 0-element list doesn't have a head or a tail.  It's just an empty list,
+which is a different case to what we've seen.  But how about the 1-element
+list?  It has a C<head>, but does it have a C<tail>?
+
+Well, we saw that the tail of the list C<"hello"> was the list C<"ello">.
+So the tail of C<"o"> should be the list C<"">, i.e. the empty list.
+
+This means that really our lists look like:
+
+    [o.]->()
+
+    [h.]->[e.]->[l.]->[l.]->[o.]->()
+
+So a list can be one of two things:
+
+    ()      an empty list
+    [x.]->  a linking cell the connects a value to another list
+            (where the other list is either another linking cell
+            or an empty list)
+
+Let's have a look now at how we could represent this in code.  As usual,
+we'll look at examples in Modern Perl.  We'll add code and explanations in
+Ruby, Python, and JavaScript at the end of the chapter.
+
+We I<could> represent the two cases as
+
+    []              an empty array
+    [$head, $tail]  an array representing a tuple of head and tail
+
+However, in this book we'll use objects declared using C<Moose> wherever we
+can.  This will give more straight-forward code, as well as having a lot of
+power that we'll need when we go on to more complex scenarios.
+
+=begin programlisting
+
+    # NOT TESTED!
+
+    use MooseX::Declare;
+
+    role List {
+        requires 'head';
+        requires 'tail';
+    }
+
+    class List::Link with List {
+        has head => ( is => 'ro', isa => 'Any' );
+        has tail => ( is => 'ro', isa => role_type('List') ),
+    }
+
+    class List::Empty with List {
+        method head { die "Can't take head of empty list!" }
+        method tail { die "Can't take head of empty list!" }
+    }
+
+=end programlisting
+
+With this code, we could already create a list, but it'd be a little verbose:
+
+=begin programlisting
+
+    my $list = List::Link->new(
+        head => 'h',
+        tail => List::Link->new(
+            head => 'e',
+            tail => List::Link->new(...
+
+=end programlisting
+
+So let's add a little sugar:
+
+=begin programlisting
+
+    # NOT TESTED
+
+    method fromArray (@array) {
+        if (! @array) {
+            return List::Empty->new;
+        }
+
+        my ($head, @tail) = @array;
+        return List::Link->new(
+            head => $head,
+            tail => $self->fromArray(@tail),
+        );
+    }
+
+=end programlisting
+
+=begin comment
+
+ L < some_section > to include sections/some_section.pod
+
+=end comment
