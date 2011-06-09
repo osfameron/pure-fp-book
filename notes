@@ -1,0 +1,19 @@
+Mark Jason Dominus
+    http://hop.perl.plover.com/
+
+Yuval Koogman
+    http://blog.woobling.org/search/label/immutability
+    http://blog.woobling.org/2009/11/subcallrecur.html
+
+Perl Modules
+    CYCLES (ocharles)
+        Data::Zipper
+
+    NUFFIN (Yuval)
+        Sub::Call::Tail
+        Sub::Call::Recur
+
+    OSFAMERON
+        Acme::Monads
+        Sub::Curried (and Sub::Compose)
+        Acme::Fork::Lazy
