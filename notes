@@ -5,6 +5,25 @@ Yuval Koogman
     http://blog.woobling.org/search/label/immutability
     http://blog.woobling.org/2009/11/subcallrecur.html
 
+Hietaniemi/Macdonald/Orwant, Mastering Algorithms With Perl 
+    http://oreilly.com/catalog/9781565923980
+    (Chapter 3, Advanced Data Structures, Chapter 8, Graphs)
+
+Okasaki 
+    Purely Functional Data Structures
+
+Grab bag of random (unread) articles/books
+    http://hetland.org/writing/python-algorithms/
+    Bruno Preiss, multi-lingual algorithms book
+        (probably translated from C++)
+        http://www.brpreiss.com/books/opus7/ (Python)
+        http://www.brpreiss.com/books/opus8/ (Ruby)
+        http://www.brpreiss.com/books/opus10/ (Perl, only source code)
+    http://www.cleveralgorithms.com/ (Ruby, via petercooper) 
+        perhaps not very "rubyish"?
+    http://www.igvita.com/2009/03/26/ruby-algorithms-sorting-trie-heaps/
+    http://blog.shusta.org/archives/2007/04/data_structures.html
+
 Haskell inspiration
     parallel mapreduce http://article.gmane.org/gmane.comp.lang.haskell.cafe/41944
 
