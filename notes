@@ -5,6 +5,9 @@ Yuval Koogman
     http://blog.woobling.org/search/label/immutability
     http://blog.woobling.org/2009/11/subcallrecur.html
 
+Haskell inspiration
+    parallel mapreduce http://article.gmane.org/gmane.comp.lang.haskell.cafe/41944
+
 Perl Modules
     CYCLES (ocharles)
         Data::Zipper

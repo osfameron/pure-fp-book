@@ -48,14 +48,13 @@ So we've seen lists of 4 and 5 elements.  You could grow the list arbitrarily
 large, by continuing to add links to new elements.  Let's compare this with
 an array:
 
-     1  2  3  4  5
+     0  1  2  3  4 
     [h][e][l][l][o]
 
 The array has 5 slots, stored next to each other in memory.  This means that
 we can immediately access any of them in any order.  However, if we want to 
-add a new element, we'd have to resize the array.
-
- TODO: more stuff on arrays
+add a new element, we'd have to resize the array.  We'll have a look at this
+in more detail later.
 
 How about smaller lists?
 
@@ -81,6 +80,8 @@ So a list can be one of two things:
     [x.]->  a linking cell the connects a value to another list
             (where the other list is either another linking cell
             or an empty list)
+
+=head1 Implementation
 
 Let's have a look now at how we could represent this in code.  As usual,
 we'll look at examples in Modern Perl.  We'll add code and explanations in
@@ -149,3 +150,96 @@ So let's add a little sugar:
     }
 
 =end programlisting
+
+=head2 Getting data out of a list
+
+While arrays and lists both store collections of data, the representations make
+certain tasks easier or more difficult.  Access an item positionally, for
+example, is trivial with an array:
+
+     0  1  2  3  4 
+    [h][e][l][l][o]
+
+    To access item number 3, find the beginning of the array, and get the 
+    contents of the box 3 positions to the right.
+
+With a list, on the other hand, we don't have an easy way to jump to another
+element, as each cell is stored in a different location in memory.
+
+    [h.]->[e.]->[l.]->[l.]->[o.]->()
+
+Instead we need to visit each cell in turn until we arrive at the right C<head>
+element.
+
+=begin programlisting
+
+    method nth (Int $pos) {
+        if (!$pos) {
+            return $self->head
+        }
+        return $self->nth( $pos-1 );
+    }
+
+=cut
+
+As with the fromArray method, we call this recursively.  While this is very
+elegant, this kind of code wasn't one of the initial use cases for our dynamic
+languages, so we may have to work around it.
+
+=head2 Tail calls and recursion limits
+
+In the method C<nth> above, we recurse back into the same method until we reach
+the right position.  Every time we do this, we are making a new method call,
+which is added to the call stack.  This requires storing information about the
+caller, and to support these very dynamic languages, may require quite a
+I<lot> of information... And finally, once we get to the base case, and are
+ready to return the result, the interpreter will then have to hop back through
+the stack, one level at a time, till it gets back to the top, passing the result
+information up all the way to the top.
+
+If we make many of these recursive calls, then the interpreter may start to
+complain about what we're doing.  For example, in Perl:
+
+    Deep recursion on subroutine "List::nth" at foo.pl line 20
+
+There are ways to eliminate these warnings
+
+    no warnings 'recursion';
+    $DB::deep = 100_000_000; # some big number, greater than maximum number of
+                             # recursions
+
+But this does't fix the root problem: we may blow all the memory allocated
+to the call stack, and the interpreter may crash.
+
+In languages like Scheme and Haskell, which are built around recursive data
+structures, the compilers will naturally do Tail Call Elimination. This means
+that if the last action in a routine is to call another method (often, but not
+always, the current method) then you can simply jump to that method, without
+having to add the overhead of storing the call on the stack.
+
+Though Perl can't do this automatically, there are two modules on CPAN by
+Yuval Koogman that will allow you to handle this elegantly,
+C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster, but only
+handles function calls that recurse into itself.  The former can handle tail
+calls to any subroutine, and also object methods, so we'll use that.
+
+=begin programlisting
+
+    use Sub::Call::Tail; # take that, recursion!
+
+    method nth (Int $pos) {
+        if (!$pos) {
+            return $self->head
+        }
+        return tail $self->nth( $pos-1 );
+    }
+
+=cut
+
+There are similar workarounds available for Python, Ruby, and Javascript.  They
+will usually use a C<goto> statement in some form, perhaps a structured one thateither jumps back to the beginning of the block.  (The Perl hack is implemented
+with a C<goto &function> call, which, though it shares the same name as the
+reviled control-flow operation, actually does something slightly cleaner,
+simply replacing the currently running subroutine with the new one.)
+
+=head2 Transformations on lists
