@@ -180,7 +180,7 @@ element.
         return $self->nth( $pos-1 );
     }
 
-=cut
+=end programlisting
 
 As with the fromArray method, we call this recursively.  While this is very
 elegant, this kind of code wasn't one of the initial use cases for our dynamic
@@ -234,7 +234,7 @@ calls to any subroutine, and also object methods, so we'll use that.
         return tail $self->nth( $pos-1 );
     }
 
-=cut
+=end programlisting
 
 There are similar workarounds available for Python, Ruby, and Javascript.  They
 will usually use a C<goto> statement in some form, perhaps a structured one thateither jumps back to the beginning of the block.  (The Perl hack is implemented
