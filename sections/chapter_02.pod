@@ -127,9 +127,13 @@ However, in this book we'll use objects declared using C<Moose> wherever we
 can.  This will give more straight-forward code, as well as having a lot of
 power that we'll need when we go on to more complex scenarios.
 
-    # NOT TESTED!
+Note that all of the code examples are implemented and tested at 
+C<https://github.com/osfameron/pure-fp-book/tree/master/code>, so you can
+easily check how things hang together. If there's no implementation in your
+language, then please fork the code on github and contribute!
 
     use MooseX::Declare;
+    BEGIN { role_type 'List' }
 
     role List {
         requires 'head';
@@ -138,7 +142,7 @@ power that we'll need when we go on to more complex scenarios.
 
     class List::Link with List {
         has head => ( is => 'ro', isa => 'Any' );
-        has tail => ( is => 'ro', isa => role_type('List') ),
+        has tail => ( is => 'ro', isa => 'List' ),
     }
 
     class List::Empty with List {
@@ -156,9 +160,8 @@ With this code, we could already create a list, but it'd be a little verbose:
 
 So let's add a little sugar:
 
-    # NOT TESTED
-
-    method fromArray (@array) {
+    # can be called as a class method
+    method fromArray ($self: @array) {
         if (! @array) {
             return List::Empty->new;
         }
@@ -190,16 +193,33 @@ element, as each cell is stored in a different location in memory.
 Instead we need to visit each cell in turn until we arrive at the right C<head>
 element.
 
-    method nth (Int $pos) {
-        if (!$pos) {
-            return $self->head
-        }
-        return $self->nth( $pos-1 );
+Obviously, we can't index into an Empty list:
+
+    use MooseX::MultiMethods;
+
+    multi method nth (List::Empty $self: Int $pos) { 
+        die "Can't index into an Empty list"; 
     }
 
-As with the fromArray method, we call this recursively.  While this is very
-elegant, this kind of code wasn't one of the initial use cases for our dynamic
-languages, so we may have to work around it.
+And if we want the zero-th element of a list, then we're just looking for its head.
+
+    multi method nth (Int $pos where { $_ == 0 }) {
+        return $self->head;
+    }
+
+But if we've passed a positive integer, then we can simply recurse down the tail, looking for the C<nth> of the
+next lowest integer, until we get to 0.
+
+    multi method nth (Int $pos where { $_ > 0 }) {
+        return $self->tail->nth( $pos - 1 );
+    }
+
+Notice how we've specified all the valid ways to call this method.  If we call C<$list-E<gt>nth("foo")> or
+C<$list-E<gt>nth(-1)> then Moose will throw an error for us automatically!
+
+As with the fromArray method, this kind of recursive code is very elegant, but there is a teensy little problem:
+dynamic languages were never designed for this kind of code structure, and that means that, by default, they
+do have a few little hiccups that we need to be aware of.
 
 =head2 Tail calls and recursion limits
 
@@ -240,18 +260,16 @@ calls to any subroutine, and also object methods, so we'll use that.
 
     use Sub::Call::Tail; # take that, recursion!
 
-    method nth (Int $pos) {
-        if (!$pos) {
-            return $self->head
-        }
-        return tail $self->nth( $pos-1 );
+    multi method nth (Int $pos where { $_ > 0 }) {
+        tail $self->tail->nth( $pos - 1 );
     }
 
 There are similar workarounds available for Python, Ruby, and Javascript.  They
-will usually use a C<goto> statement in some form, perhaps a structured one thateither jumps back to the beginning of the block.  (The Perl hack is implemented
-with a C<goto &function> call, which, though it shares the same name as the
-reviled control-flow operation, actually does something slightly cleaner,
-simply replacing the currently running subroutine with the new one.)
+will usually use a C<goto> statement in some form, perhaps a structured one
+that either jumps back to the beginning of the block.  (The Perl hack is
+implemented with a C<goto &function> call, which, though it shares the same
+name as the reviled control-flow operation, actually does something slightly
+cleaner, simply replacing the currently running subroutine with the new one.)
 
 =for comment
     # Right now, I think we'll look at whole-list transformations *first*, and
@@ -298,13 +316,14 @@ To define map for a linked list, we of course define it recursively!
     use MooseX::MultiMethods;
     use Sub::Call::Tail;
 
-    multi method map (List::Empty $self: $f) {
-        return $self;
+    multi method map (List::Link $self: CodeRef $f) {
+        tail $self->new( 
+            head => $f->($self->head),
+            tail => $self->tail->map( $f )
+        );
     }
-    multi method map (List::Link $self: $f) {
-        tail List::Link->new(
-            $f->($self),
-            $self->tail->map( $f );
+    multi method map (List::Empty $self: CodeRef $f) { 
+        return $self;
     }
 
 and later:
