@@ -9,6 +9,7 @@ role List {
     requires 'head';
     requires 'tail';
 
+    # can be called as a class method
     method fromArray ($self: @array) {
         if (! @array) {
             return List::Empty->new;
@@ -20,6 +21,7 @@ role List {
             tail => $self->fromArray(@tail),
         );
     }
+
     multi method nth (List::Empty $self: Int $pos) { 
         die "Can't index into an Empty list"; 
     }
@@ -29,17 +31,29 @@ role List {
     multi method nth (Int $pos where { $_ > 0 }) {
         tail $self->tail->nth( $pos - 1 );
     }
+
+    multi method map (List::Link $self: CodeRef $f) {
+        tail $self->new( 
+            head => $f->($self->head),
+            tail => $self->tail->map( $f )
+        );
+    }
+    multi method map (List::Empty $self: CodeRef $f) { 
+        return $self;
+    }
 }
 
 class List::Link with List {
+    use Sub::Call::Tail;
+
     has head => ( is => 'ro', isa => 'Any' );
     has tail => ( is => 'ro', isa => 'List' ),
+
 }
 
 class List::Empty with List {
     method head { die "Can't take head of empty list!" }
     method tail { die "Can't take head of empty list!" }
-
 }
 
 1;

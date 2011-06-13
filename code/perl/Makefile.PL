@@ -7,6 +7,9 @@ name           'Pure-FP-Book';
 # Specific dependencies
 requires       'MooseX::Declare';
 requires       'Sub::Call::Tail';
+requires       'MooseX::MultiMethods';
+requires       'signatures';
+
 test_requires  'Test::More'  => '0.42';
  
 WriteAll;
