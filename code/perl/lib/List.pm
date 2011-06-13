@@ -1,5 +1,5 @@
 use MooseX::Declare;
-use List::Types;
+use List::Types 'List';
 
 role List {
     use Sub::Call::Tail;
@@ -32,14 +32,14 @@ role List {
 }
 
 class List::Link with List {
+    use List::Types 'List';
     has head => ( is => 'ro', isa => 'Any' );
-    has tail => ( is => 'ro', isa => 'List' ),
+    has tail => ( is => 'ro', isa => List ),
 }
 
 class List::Empty with List {
     method head { die "Can't take head of empty list!" }
     method tail { die "Can't take head of empty list!" }
-
 }
 
 1;
