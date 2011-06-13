@@ -1,10 +1,10 @@
 use MooseX::Declare;
-use List::Types 'List';
 
 role List {
     use Sub::Call::Tail;
     use MooseX::MultiMethods;
     use Moose::Util::TypeConstraints;
+    use List::Types ':all';
 
     requires 'head';
     requires 'tail';
@@ -33,6 +33,7 @@ role List {
 
 class List::Link with List {
     use List::Types 'List';
+
     has head => ( is => 'ro', isa => 'Any' );
     has tail => ( is => 'ro', isa => List ),
 }

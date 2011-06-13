@@ -1,10 +1,9 @@
 package List::Types;
 
-use MooseX::Types -declare => [qw/ List /];
-use Moose::Util::TypeConstraints;
+use MooseX::Types -declare => [qw/ List Empty Link /];
 
-class_type 'List::Empty';
-class_type 'List::Link';
-role_type  'List', { role => 'List' };
+class_type Empty, { class => 'List::Empty' };
+class_type Link,  { class => 'List::Link' };
+role_type  List,  { role => 'List' };
 
 1;
