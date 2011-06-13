@@ -85,6 +85,8 @@ we can immediately access any of them in any order.  However, if we want to
 add a new element, we'd have to resize the array.  We'll have a look at this
 in more detail later.
 
+TODO: more look at a dynamic array type
+
 How about smaller lists?
 
     1 element:   [o ]
@@ -125,8 +127,6 @@ However, in this book we'll use objects declared using C<Moose> wherever we
 can.  This will give more straight-forward code, as well as having a lot of
 power that we'll need when we go on to more complex scenarios.
 
-=begin programlisting
-
     # NOT TESTED!
 
     use MooseX::Declare;
@@ -146,11 +146,7 @@ power that we'll need when we go on to more complex scenarios.
         method tail { die "Can't take head of empty list!" }
     }
 
-=end programlisting
-
 With this code, we could already create a list, but it'd be a little verbose:
-
-=begin programlisting
 
     my $list = List::Link->new(
         head => 'h',
@@ -158,11 +154,7 @@ With this code, we could already create a list, but it'd be a little verbose:
             head => 'e',
             tail => List::Link->new(...
 
-=end programlisting
-
 So let's add a little sugar:
-
-=begin programlisting
 
     # NOT TESTED
 
@@ -177,8 +169,6 @@ So let's add a little sugar:
             tail => $self->fromArray(@tail),
         );
     }
-
-=end programlisting
 
 =head2 Getting data out of a list
 
@@ -200,16 +190,12 @@ element, as each cell is stored in a different location in memory.
 Instead we need to visit each cell in turn until we arrive at the right C<head>
 element.
 
-=begin programlisting
-
     method nth (Int $pos) {
         if (!$pos) {
             return $self->head
         }
         return $self->nth( $pos-1 );
     }
-
-=end programlisting
 
 As with the fromArray method, we call this recursively.  While this is very
 elegant, this kind of code wasn't one of the initial use cases for our dynamic
@@ -252,8 +238,6 @@ C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster, but only
 handles function calls that recurse into itself.  The former can handle tail
 calls to any subroutine, and also object methods, so we'll use that.
 
-=begin programlisting
-
     use Sub::Call::Tail; # take that, recursion!
 
     method nth (Int $pos) {
@@ -263,12 +247,88 @@ calls to any subroutine, and also object methods, so we'll use that.
         return tail $self->nth( $pos-1 );
     }
 
-=end programlisting
-
 There are similar workarounds available for Python, Ruby, and Javascript.  They
 will usually use a C<goto> statement in some form, perhaps a structured one thateither jumps back to the beginning of the block.  (The Perl hack is implemented
 with a C<goto &function> call, which, though it shares the same name as the
 reviled control-flow operation, actually does something slightly cleaner,
 simply replacing the currently running subroutine with the new one.)
 
+=for comment
+    # Right now, I think we'll look at whole-list transformations *first*, and
+    # worry about things like deleting and modifying list elements later.
+    #   (The latter is what a programmer might think they want to know first, but
+    # they're less interesting than fiddly, and getting out of the mindset of low-level
+    # list manipulation *where possible* might be a better narrative?)
+    #   Also, it's when we come to editing that the difference between mutable/persistent
+    # datastructures kicks in, so it may be better to flow the discussion from this to the
+    # doubly linked list.
+
 =head2 Transformations on lists
+
+=head3 Applying a function to a list: C<map>
+
+We often want to apply a function to all elements of a collection.  For example, we may have a
+list of user records, and we want a list of full names.
+
+The dynamic languages, for the most part, have already borrowed this functionality from the
+world of Functional Programming, and often call it C<map>.
+
+    my @users = (
+        {
+            first_name => 'Bob',
+            last_name  => 'Smith',
+        },
+        {
+            first_name => 'Aisha',
+            last_name  => 'Chaudhury',
+        }
+    );
+
+    use signatures;
+    sub full_name ($user) {
+        return join ' ' => 
+            $user->{first_name},
+            $user->{last_name};
+    }
+
+    my @full_names = map full_name($_), @users;
+
+To define map for a linked list, we of course define it recursively!
+
+    use MooseX::MultiMethods;
+
+    multi method map (List::Empty $self: $f) {
+        return $self;
+    }
+    multi method map (List::Link $self: $f) {
+        tail List::Link->new(
+            $f->($self),
+            $self->tail->map( $f );
+    }
+
+and later:
+
+    my $users = List->fromArray(@users);
+
+    my $names = $users->map( \&full_name );
+
+=head4 Functors
+
+Note how we started with a function that operated on a single value:
+
+    full_name :: { first_name, last_name } -> "Full name"
+
+And we've ended with one that operates on whole collections:
+
+    map(full_name) :: [List of {...}] -> [List of "Full name"]
+
+Often, in the world of FP, we'll call this kind of operation a Functor.  You'll often see the
+operation that we just defined as C<map> called C<fmap> instead (i.e. Functor Map).  Converting
+a function that operates on a single value to one that operates on a collection (or any other
+type of container) is called I<lifting> the function.
+
+=head3 C<filter>
+
+=head3 C<fold>
+
+=head2 Modifying the list (inserting, deleting, editing)
