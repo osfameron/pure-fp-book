@@ -1,0 +1,274 @@
+=head0 Lists
+
+=head1 Overview plan
+
+    - A mutable list: Perl's array (a Vector type)
+        - advantages
+        - disadvantages
+    - Singly-linked lists
+        - Mutable versus Immutable
+        - code
+    - List operations
+        - map / fmap
+        - filter
+    - Interlude: Tail recursion, TCE
+    - Doubly-linked lists?
+        - mutable... immutable?
+        - pointers
+        - code
+        - rewrite with Data::Zipper
+
+    - Exercise: implement a turing machine with a zipper onto an infinite
+        (in both directions) list
+
+    - Show me the Code!: implementations of the above concepts in
+        - Modern Perl with Moose
+        - Javascript
+        - Ruby
+        - Python
+
+=head1 Linked lists
+
+The linked list is one of the oldest data structures in computing, dating
+back to the mid-1950s.  While it's a collection type, similar to an Array,
+it makes very different tradeoffs.
+
+In a dynamic programming language like Perl, Ruby, Python, of Javascript,
+we very rarely feel the need to look beyond the builtin array types, as they
+are usually Good Enough.  However, the linked list I<is> a fundamental building
+block, and we'll see that it is key for understanding concepts such as:
+
+=over 4
+
+=item recursive thinking
+
+=item data-sharing
+
+=item persistent data structures
+
+=back
+
+Beyond this, linked lists do have some features that arrays don't
+
+=over 4
+
+=item handling circular data
+
+=item infinite lists and streams
+
+=item possibility for automatic parallelisation
+
+=back
+
+A linked list is a structure that contains an element (often called the
+C<head>) and a pointer to the rest of the list (the C<tail>).
+
+For example, the word C<"hello"> is made up of the list of characters:
+
+    [h.]->[e.]->[l.]->[l.]->[o ]
+     ^    ^
+   head   tail
+
+The head is the letter C<"h">, and the tail is the list
+
+    [e.]->[l.]->[l.]->[o ]
+
+So we've seen lists of 4 and 5 elements.  You could grow the list arbitrarily
+large, by continuing to add links to new elements.  Let's compare this with
+an array:
+
+     0  1  2  3  4 
+    [h][e][l][l][o]
+
+The array has 5 slots, stored next to each other in memory.  This means that
+we can immediately access any of them in any order.  However, if we want to 
+add a new element, we'd have to resize the array.  We'll have a look at this
+in more detail later.
+
+How about smaller lists?
+
+    1 element:   [o ]
+    0 elements:  ()
+
+The 0-element list doesn't have a head or a tail.  It's just an empty list,
+which is a different case to what we've seen.  But how about the 1-element
+list?  It has a C<head>, but does it have a C<tail>?
+
+Well, we saw that the tail of the list C<"hello"> was the list C<"ello">.
+So the tail of C<"o"> should be the list C<"">, i.e. the empty list.
+
+This means that really our lists look like:
+
+    [o.]->()
+
+    [h.]->[e.]->[l.]->[l.]->[o.]->()
+
+So a list can be one of two things:
+
+    ()      an empty list
+    [x.]->  a linking cell the connects a value to another list
+            (where the other list is either another linking cell
+            or an empty list)
+
+=head1 Implementation
+
+Let's have a look now at how we could represent this in code.  As usual,
+we'll look at examples in Modern Perl.  We'll add code and explanations in
+Ruby, Python, and JavaScript at the end of the chapter.
+
+We I<could> represent the two cases as
+
+    []              an empty array
+    [$head, $tail]  an array representing a tuple of head and tail
+
+However, in this book we'll use objects declared using C<Moose> wherever we
+can.  This will give more straight-forward code, as well as having a lot of
+power that we'll need when we go on to more complex scenarios.
+
+=begin programlisting
+
+    # NOT TESTED!
+
+    use MooseX::Declare;
+
+    role List {
+        requires 'head';
+        requires 'tail';
+    }
+
+    class List::Link with List {
+        has head => ( is => 'ro', isa => 'Any' );
+        has tail => ( is => 'ro', isa => role_type('List') ),
+    }
+
+    class List::Empty with List {
+        method head { die "Can't take head of empty list!" }
+        method tail { die "Can't take head of empty list!" }
+    }
+
+=end programlisting
+
+With this code, we could already create a list, but it'd be a little verbose:
+
+=begin programlisting
+
+    my $list = List::Link->new(
+        head => 'h',
+        tail => List::Link->new(
+            head => 'e',
+            tail => List::Link->new(...
+
+=end programlisting
+
+So let's add a little sugar:
+
+=begin programlisting
+
+    # NOT TESTED
+
+    method fromArray (@array) {
+        if (! @array) {
+            return List::Empty->new;
+        }
+
+        my ($head, @tail) = @array;
+        return List::Link->new(
+            head => $head,
+            tail => $self->fromArray(@tail),
+        );
+    }
+
+=end programlisting
+
+=head2 Getting data out of a list
+
+While arrays and lists both store collections of data, the representations make
+certain tasks easier or more difficult.  Access an item positionally, for
+example, is trivial with an array:
+
+     0  1  2  3  4 
+    [h][e][l][l][o]
+
+    To access item number 3, find the beginning of the array, and get the 
+    contents of the box 3 positions to the right.
+
+With a list, on the other hand, we don't have an easy way to jump to another
+element, as each cell is stored in a different location in memory.
+
+    [h.]->[e.]->[l.]->[l.]->[o.]->()
+
+Instead we need to visit each cell in turn until we arrive at the right C<head>
+element.
+
+=begin programlisting
+
+    method nth (Int $pos) {
+        if (!$pos) {
+            return $self->head
+        }
+        return $self->nth( $pos-1 );
+    }
+
+=end programlisting
+
+As with the fromArray method, we call this recursively.  While this is very
+elegant, this kind of code wasn't one of the initial use cases for our dynamic
+languages, so we may have to work around it.
+
+=head2 Tail calls and recursion limits
+
+In the method C<nth> above, we recurse back into the same method until we reach
+the right position.  Every time we do this, we are making a new method call,
+which is added to the call stack.  This requires storing information about the
+caller, and to support these very dynamic languages, may require quite a
+I<lot> of information... And finally, once we get to the base case, and are
+ready to return the result, the interpreter will then have to hop back through
+the stack, one level at a time, till it gets back to the top, passing the result
+information up all the way to the top.
+
+If we make many of these recursive calls, then the interpreter may start to
+complain about what we're doing.  For example, in Perl:
+
+    Deep recursion on subroutine "List::nth" at foo.pl line 20
+
+There are ways to eliminate these warnings
+
+    no warnings 'recursion';
+    $DB::deep = 100_000_000; # some big number, greater than maximum number of
+                             # recursions
+
+But this does't fix the root problem: we may blow all the memory allocated
+to the call stack, and the interpreter may crash.
+
+In languages like Scheme and Haskell, which are built around recursive data
+structures, the compilers will naturally do Tail Call Elimination. This means
+that if the last action in a routine is to call another method (often, but not
+always, the current method) then you can simply jump to that method, without
+having to add the overhead of storing the call on the stack.
+
+Though Perl can't do this automatically, there are two modules on CPAN by
+Yuval Koogman that will allow you to handle this elegantly,
+C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster, but only
+handles function calls that recurse into itself.  The former can handle tail
+calls to any subroutine, and also object methods, so we'll use that.
+
+=begin programlisting
+
+    use Sub::Call::Tail; # take that, recursion!
+
+    method nth (Int $pos) {
+        if (!$pos) {
+            return $self->head
+        }
+        return tail $self->nth( $pos-1 );
+    }
+
+=end programlisting
+
+There are similar workarounds available for Python, Ruby, and Javascript.  They
+will usually use a C<goto> statement in some form, perhaps a structured one thateither jumps back to the beginning of the block.  (The Perl hack is implemented
+with a C<goto &function> call, which, though it shares the same name as the
+reviled control-flow operation, actually does something slightly cleaner,
+simply replacing the currently running subroutine with the new one.)
+
+=head2 Transformations on lists
