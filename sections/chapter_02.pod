@@ -296,6 +296,7 @@ world of Functional Programming, and often call it C<map>.
 To define map for a linked list, we of course define it recursively!
 
     use MooseX::MultiMethods;
+    use Sub::Call::Tail;
 
     multi method map (List::Empty $self: $f) {
         return $self;
