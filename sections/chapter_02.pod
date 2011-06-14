@@ -162,16 +162,22 @@ With this code, we could already create a list, but it'd be a little verbose:
             head => 'e',
             tail => List::Link->new(...
 
-So let's add a little sugar:
+So let's add a little sugar.  If the array is empty, we return an empty list.
+Otherwise we create a link from the first element of the array to the rest of
+the list.  Typically in Perl we might use a condition like C<if> to code these
+two cases.  But in both Functional and Object Oriented programming, it's often
+much more elegant to use pattern matching (of which "multiple dispatch" is a
+variant.)  C<Moose> provides a rather nice and flexible way of declaring these,
+and we'll take advantage of it.
+
+    use MooseX::MultiMethods;
 
     # can be called as a class method
-    method fromArray ($self: @array) {
-        if (! @array) {
-            return List::Empty->new;
-        }
-
-        my ($head, @tail) = @array;
-        return List::Link->new(
+    multi method fromArray ($self:) {
+        return List::Empty->new;
+    }
+    multi method fromArray ($self: $head, @tail) {
+        tail_call List::Link->new(
             head => $head,
             tail => $self->fromArray(@tail),
         );
@@ -198,8 +204,6 @@ Instead we need to visit each cell in turn until we arrive at the right C<head>
 element.
 
 Obviously, we can't index into an Empty list:
-
-    use MooseX::MultiMethods;
 
     multi method nth (List::Empty $self: Int $pos) { 
         die "Can't index into an Empty list"; 
@@ -269,10 +273,12 @@ By default, C<Sub::Call::Tail> exports a function called C<tail>... which could
 confuse both the reader and C<perl>.  We'll use the ability to import an aliased
 function, and call it C<tail_call> instead, which makes it much clearer!
 
-# in https://github.com/osfameron/sub-call-tail release pending ;-)
+ # the slightly nicer 'use' line is implemented in 
+ # https://github.com/osfameron/sub-call-tail release pending ;-)
 
     # take that, recursion!
-    use Sub::Call::Tail tail => { -as => 'tail_call'};
+    use Sub::Import 'Sub::Call::Tail' tail => { -as => 'tail_call' };
+    # use Sub::Call::Tail tail => { -as => 'tail_call'};
 
     multi method nth (Int $pos where { $_ > 0 }) {
         tail_call $self->tail->nth( $pos - 1 );
@@ -318,16 +324,14 @@ C<map>.
 
 To define map for a linked list, we of course define it recursively!
 
-    use MooseX::MultiMethods;
-
+    multi method map (List::Empty $self: CodeRef $f) { 
+        return $self;
+    }
     multi method map (List::Link $self: CodeRef $f) {
         tail_call $self->new( 
             head => $f->($self->head),
             tail => $self->tail->map( $f )
         );
-    }
-    multi method map (List::Empty $self: CodeRef $f) { 
-        return $self;
     }
 
 and later:

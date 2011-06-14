@@ -82,7 +82,7 @@ role List {
 
 class List::Link with List {
     has head => ( is => 'ro', isa => 'Any' );
-    has tail => ( is => 'ro', isa => 'List' ),
+    has tail => ( is => 'ro', isa => 'List' ); 
 }
 
 class List::Empty with List {
