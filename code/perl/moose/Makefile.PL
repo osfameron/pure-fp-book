@@ -8,6 +8,7 @@ name           'Pure-FP-Book';
 requires       'MooseX::Declare';
 requires       'Sub::Call::Tail';
 requires       'MooseX::MultiMethods';
+requires       'MooseX::Singleton';
 requires       'signatures';
 
 test_requires  'Test::More'  => '0.42';

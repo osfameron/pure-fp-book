@@ -2,7 +2,7 @@ use MooseX::Declare;
 use List::Types;
 
 role List {
-    # use Sub::Call::Tail tail => { -as;
+    # use Sub::Call::Tail tail => { -as => 'tail_call' };
     use Sub::Import 'Sub::Call::Tail', tail => { -as => 'tail_call' };
     use MooseX::MultiMethods;
     use Moose::Util::TypeConstraints;
@@ -11,12 +11,10 @@ role List {
     requires 'tail';
 
     # can be called as a class method
-    method fromArray ($self: @array) {
-        if (! @array) {
-            return List::Empty->new;
-        }
-
-        my ($head, @tail) = @array;
+    multi method fromArray ($self:) {
+        return List::Empty->new;
+    }
+    multi method fromArray ($self: $head, @tail) {
         tail_call List::Link->new(
             head => $head,
             tail => $self->fromArray(@tail),
@@ -66,6 +64,8 @@ class List::Link with List {
 }
 
 class List::Empty with List {
+    use MooseX::Singleton;
+
     method head { die "Can't take head of empty list!" }
     method tail { die "Can't take tail of empty list!" }
 }

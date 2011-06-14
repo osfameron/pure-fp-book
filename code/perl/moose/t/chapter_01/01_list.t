@@ -47,5 +47,8 @@ my $filtered = $list->filter( sub { (shift) % 2 });
 is $filtered->head,   11, 'odd filter';
 is $filtered->nth(1), 13, 'odd filter';
 
+my $e1 = List::Empty->new();
+my $e2 = List::Empty->new();
+is $e1, $e2, 'List::Empty is a singleton';
 
 done_testing;
