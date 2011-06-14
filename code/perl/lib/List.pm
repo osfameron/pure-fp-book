@@ -60,11 +60,8 @@ role List {
 }
 
 class List::Link with List {
-    use Sub::Call::Tail;
-
     has head => ( is => 'ro', isa => 'Any' );
     has tail => ( is => 'ro', isa => 'List' ),
-
 }
 
 class List::Empty with List {
