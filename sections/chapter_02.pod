@@ -319,7 +319,6 @@ C<map>.
 To define map for a linked list, we of course define it recursively!
 
     use MooseX::MultiMethods;
-    use Sub::Call::Tail;
 
     multi method map (List::Link $self: CodeRef $f) {
         tail_call $self->new( 
