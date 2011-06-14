@@ -66,7 +66,7 @@ class List::Link with List {
 
 class List::Empty with List {
     method head { die "Can't take head of empty list!" }
-    method tail { die "Can't take head of empty list!" }
+    method tail { die "Can't take tail of empty list!" }
 }
 
 1;

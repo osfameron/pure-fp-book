@@ -2,16 +2,19 @@
 
 =head1 Overview plan
 
-    - A mutable list: Perl's array (a Vector type)
-        - advantages
-        - disadvantages
     - Singly-linked lists
-        - Mutable versus Immutable
-        - code
+        - some characteristics
+        - how they are formed
+        - basic implementation (in Perl)
+    - Indexing into a list
+    - Interlude: Tail recursion, TCE
     - List operations
         - map / fmap
         - filter
-    - Interlude: Tail recursion, TCE
+        - fold
+    - Modifying, inserting, deleting list elements
+        - mutable versus immutable
+        - compare with a mutable Vector (such as Perl's arrays)
     - Doubly-linked lists?
         - mutable... immutable?
         - pointers
@@ -21,7 +24,8 @@
     - Exercise: implement a turing machine with a zipper onto an infinite
         (in both directions) list
 
-    - Show me the Code!: implementations of the above concepts in
+    - Show me the Code!: implementations of the above concepts
+      (or, if available, usages of equivalent, available library functions)
         - Modern Perl with Moose
         - Javascript
         - Ruby
@@ -147,7 +151,7 @@ language, then please fork the code on github and contribute!
 
     class List::Empty with List {
         method head { die "Can't take head of empty list!" }
-        method tail { die "Can't take head of empty list!" }
+        method tail { die "Can't take tail of empty list!" }
     }
 
 With this code, we could already create a list, but it'd be a little verbose:
@@ -176,7 +180,7 @@ So let's add a little sugar:
 =head2 Getting data out of a list
 
 While arrays and lists both store collections of data, the representations make
-certain tasks easier or more difficult.  Access an item positionally, for
+certain tasks easier or more difficult.  Accessing an item positionally, for
 example, is trivial with an array:
 
      0  1  2  3  4 
@@ -201,14 +205,15 @@ Obviously, we can't index into an Empty list:
         die "Can't index into an Empty list"; 
     }
 
-And if we want the zero-th element of a list, then we're just looking for its head.
+And if we want the zero-th element of a list, then we're just looking for its
+head.
 
     multi method nth (Int $pos where { $_ == 0 }) {
         return $self->head;
     }
 
-But if we've passed a positive integer, then we can simply recurse down the tail, looking for the C<nth> of the
-next lowest integer, until we get to 0.
+But if we've passed a positive integer, then we can simply recurse down the
+tail, looking for the C<nth> of the next lowest integer, until we get to 0.
 
     multi method nth (Int $pos where { $_ > 0 }) {
         return $self->tail->nth( $pos - 1 );
@@ -217,9 +222,10 @@ next lowest integer, until we get to 0.
 Notice how we've specified all the valid ways to call this method.  If we call C<$list-E<gt>nth("foo")> or
 C<$list-E<gt>nth(-1)> then Moose will throw an error for us automatically!
 
-As with the fromArray method, this kind of recursive code is very elegant, but there is a teensy little problem:
-dynamic languages were never designed for this kind of code structure, and that means that, by default, they
-do have a few little hiccups that we need to be aware of.
+As with the fromArray method, this kind of recursive code is very elegant, but
+there is a teensy little problem: dynamic languages were never designed for
+this kind of code structure, and that means that, by default, they do have a
+few little hiccups that we need to be aware of.
 
 =head2 Tail calls and recursion limits
 
@@ -243,8 +249,9 @@ There are ways to eliminate these warnings
     $DB::deep = 100_000_000; # some big number, greater than maximum number of
                              # recursions
 
-But this does't fix the root problem: we may blow all the memory allocated
-to the call stack, and the interpreter may crash.
+But that would only be papering over the synptoms, the root problem would
+remain: we may blow all the memory allocated to the call stack, and the
+interpreter may crash.
 
 In languages like Scheme and Haskell, which are built around recursive data
 structures, the compilers will naturally do Tail Call Elimination. This means
@@ -271,25 +278,16 @@ implemented with a C<goto &function> call, which, though it shares the same
 name as the reviled control-flow operation, actually does something slightly
 cleaner, simply replacing the currently running subroutine with the new one.)
 
-=for comment
-    # Right now, I think we'll look at whole-list transformations *first*, and
-    # worry about things like deleting and modifying list elements later.
-    #   (The latter is what a programmer might think they want to know first, but
-    # they're less interesting than fiddly, and getting out of the mindset of low-level
-    # list manipulation *where possible* might be a better narrative?)
-    #   Also, it's when we come to editing that the difference between mutable/persistent
-    # datastructures kicks in, so it may be better to flow the discussion from this to the
-    # doubly linked list.
-
 =head2 Transformations on lists
 
 =head3 Applying a function to a list: C<map>
 
-We often want to apply a function to all elements of a collection.  For example, we may have a
-list of user records, and we want a list of full names.
+We often want to apply a function to all elements of a collection.  For
+example, we may have a list of user records, and we want a list of full names.
 
-The dynamic languages, for the most part, have already borrowed this functionality from the
-world of Functional Programming, and often call it C<map>.
+The dynamic languages, for the most part, have already borrowed this
+functionality from the world of Functional Programming, and often call it
+C<map>.
 
     my @users = (
         {
@@ -342,10 +340,11 @@ And we've ended with one that operates on whole collections:
 
     map(full_name) :: [List of {...}] -> [List of "Full name"]
 
-Often, in the world of FP, we'll call this kind of operation a Functor.  You'll often see the
-operation that we just defined as C<map> called C<fmap> instead (i.e. Functor Map).  Converting
-a function that operates on a single value to one that operates on a collection (or any other
-type of container) is called I<lifting> the function.
+Often, in the world of FP, we'll call this kind of operation a Functor.  You'll
+often see the operation that we just defined as C<map> called C<fmap> instead
+(i.e. Functor Map).  Converting a function that operates on a single value to
+one that operates on a collection (or any other type of container) is called
+I<lifting> the function.
 
 =head3 C<filter>
 
