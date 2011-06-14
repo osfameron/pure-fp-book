@@ -6,6 +6,7 @@ role List {
     use Sub::Import 'Sub::Call::Tail', tail => { -as => 'tail_call' };
     use MooseX::MultiMethods;
     use Moose::Util::TypeConstraints;
+    use Data::Thunk;
 
     requires 'head';
     requires 'tail';
@@ -31,14 +32,14 @@ role List {
         tail_call $self->tail->nth( $pos - 1 );
     }
 
+    multi method map (List::Empty $self: CodeRef $f) { 
+        return $self;
+    }
     multi method map (List::Link $self: CodeRef $f) {
         tail_call $self->new( 
             head => $f->($self->head),
             tail => $self->tail->map( $f )
         );
-    }
-    multi method map (List::Empty $self: CodeRef $f) { 
-        return $self;
     }
 
     multi method filter (List::Empty $self: CodeRef $f) { 
@@ -55,6 +56,27 @@ role List {
         else {
             tail_call $self->tail->filter( $f );
         }
+    }
+
+    multi method foldl (List::Empty $self: CodeRef $f, $acc) {
+        return $acc;
+    }
+    multi method foldl (List::Link $self: CodeRef $f, $acc) {
+        tail_call $self->tail->foldl($f, $f->($self->head, $acc));
+    }
+
+    multi method foldr (List::Empty $self: CodeRef $f, $acc) {
+        return $acc;
+    }
+    # not tail recursive!  haskell optimizes this naturally using laziness, 
+    # so let's try annotating part with lazy {} as per: 
+    # 23:11 <Twey> You just have to make sure the ‘f x _’ is evaluated 
+    #              and the ‘foldr f z xs’ isn't
+    multi method foldr (List::Link $self: CodeRef $f, $acc) {
+        tail_call $f->(
+            $self->head, 
+            lazy { $self->tail->foldr($f, $acc) },
+        );
     }
 }
 

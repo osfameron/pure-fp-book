@@ -51,4 +51,8 @@ my $e1 = List::Empty->new();
 my $e2 = List::Empty->new();
 is $e1, $e2, 'List::Empty is a singleton';
 
+sub add ($x,$y) { $x + $y }
+is $list->foldl( \&add, 0 ), 165, 'foldl';
+is $list->foldr( \&add, 0 ), 165, 'foldr';
+
 done_testing;
