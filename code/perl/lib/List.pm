@@ -41,6 +41,22 @@ role List {
     multi method map (List::Empty $self: CodeRef $f) { 
         return $self;
     }
+
+    multi method filter (List::Empty $self: CodeRef $f) { 
+        return $self;
+    }
+    multi method filter (List::Link $self: CodeRef $f) {
+        my $head = $self->head;
+        if ($f->($head)) {
+            tail $self->new( 
+                head => $head,
+                tail => $self->tail->filter( $f ),
+            );
+        }
+        else {
+            tail $self->tail->filter( $f );
+        }
+    }
 }
 
 class List::Link with List {
