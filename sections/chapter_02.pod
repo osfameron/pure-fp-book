@@ -265,10 +265,17 @@ C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster, but only
 handles function calls that recurse into itself.  The former can handle tail
 calls to any subroutine, and also object methods, so we'll use that.
 
-    use Sub::Call::Tail; # take that, recursion!
+By default, C<Sub::Call::Tail> exports a function called C<tail>... which could
+confuse both the reader and C<perl>.  We'll use the ability to import an aliased
+function, and call it C<tail_call> instead, which makes it much clearer!
+
+# in https://github.com/osfameron/sub-call-tail release pending ;-)
+
+    # take that, recursion!
+    use Sub::Call::Tail tail => { -as => 'tail_call'};
 
     multi method nth (Int $pos where { $_ > 0 }) {
-        tail $self->tail->nth( $pos - 1 );
+        tail_call $self->tail->nth( $pos - 1 );
     }
 
 There are similar workarounds available for Python, Ruby, and Javascript.  They
@@ -315,7 +322,7 @@ To define map for a linked list, we of course define it recursively!
     use Sub::Call::Tail;
 
     multi method map (List::Link $self: CodeRef $f) {
-        tail $self->new( 
+        tail_call $self->new( 
             head => $f->($self->head),
             tail => $self->tail->map( $f )
         );

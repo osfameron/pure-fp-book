@@ -2,7 +2,8 @@ use MooseX::Declare;
 use List::Types;
 
 role List {
-    use Sub::Call::Tail;
+    # use Sub::Call::Tail tail => { -as;
+    use Sub::Import 'Sub::Call::Tail', tail => { -as => 'tail_call' };
     use MooseX::MultiMethods;
     use Moose::Util::TypeConstraints;
 
@@ -16,7 +17,7 @@ role List {
         }
 
         my ($head, @tail) = @array;
-        tail List::Link->new(
+        tail_call List::Link->new(
             head => $head,
             tail => $self->fromArray(@tail),
         );
@@ -29,11 +30,11 @@ role List {
         return $self->head;
     }
     multi method nth (Int $pos where { $_ > 0 }) {
-        tail $self->tail->nth( $pos - 1 );
+        tail_call $self->tail->nth( $pos - 1 );
     }
 
     multi method map (List::Link $self: CodeRef $f) {
-        tail $self->new( 
+        tail_call $self->new( 
             head => $f->($self->head),
             tail => $self->tail->map( $f )
         );
@@ -48,13 +49,13 @@ role List {
     multi method filter (List::Link $self: CodeRef $f) {
         my $head = $self->head;
         if ($f->($head)) {
-            tail $self->new( 
+            tail_call $self->new( 
                 head => $head,
                 tail => $self->tail->filter( $f ),
             );
         }
         else {
-            tail $self->tail->filter( $f );
+            tail_call $self->tail->filter( $f );
         }
     }
 }
