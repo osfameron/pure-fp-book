@@ -7,6 +7,7 @@ name           'Pure-FP-Book';
 # Specific dependencies
 requires       'Foose'; # from https://github.com/osfameron/foose
 requires       'Sub::Call::Tail';
+requires       'Sub::Import';
 requires       'MooseX::MultiMethods';
 requires       'signatures';
 

@@ -20,9 +20,9 @@ TODO: {
 
 isa_ok   ($list, 'List::Link' );
 
-is $list->first,       10, 'First value ok';
+is $list->head,       10, 'First value ok';
 is $list->nth(1),      11, 'This one goes to 11';
-is $list->rest->first, 11, '... and this one';
+is $list->tail->head, 11, '... and this one';
 is $list->nth(10),     20, 'Tenth element ok';
 dies_ok {
     $list->nth(11);
@@ -52,7 +52,7 @@ is $names->nth(1), 'Aisha Chaudhury', 'map ok';
 
 my $filtered = $list->filter( sub { (shift) % 2 });
 
-is $filtered->first,  11, 'odd filter';
+is $filtered->head,  11, 'odd filter';
 is $filtered->nth(1), 13, 'odd filter';
 
 
