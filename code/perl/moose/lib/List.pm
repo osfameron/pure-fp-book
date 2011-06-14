@@ -75,7 +75,7 @@ role List {
     multi method foldr (List::Link $self: CodeRef $f, $acc) {
         tail_call $f->(
             $self->head, 
-            lazy { $self->tail->foldr($f, $acc) },
+            lazy_object { $self->tail->foldr($f, $acc) }, class=>'List::Link',
         );
     }
 }
