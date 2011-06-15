@@ -25,7 +25,10 @@ dies_ok {
     $list->nth(-1);
 } 'exception on <0';
 
-is_deeply [$list->toArray], [10..20], 'toArray';
+is_deeply [$list->toArray_iterative],   [10..20], 'toArray (iterative)';
+is_deeply [$list->toArray_unoptimized], [10..20], 'toArray (unoptimized)';
+is_deeply [$list->toArray_stack],       [10..20], 'toArray (stack)';
+is_deeply [$list->toArray],             [10..20], 'toArray (aliased version)';
 is_deeply [$list->take(5)->toArray], 
            [10..14], 'take 4';
 

@@ -22,28 +22,31 @@ role List {
         );
     }
 
-=begin tricky to optimize as tail calls
-
-    multi method toArray (List::Empty $self:) { 
+    multi method toArray_unoptimized (List::Empty $self:) { 
         return ()
     }
-    multi method toArray (List::Link $self:) {
+    multi method toArray_unoptimized (List::Link $self:) {
         ($self->head, $self->tail->toArray);
     }
 
-=end
-=cut
+    multi method toArray_stack (List::Empty $self: @stack) {
+        return @stack;
+    }
+    multi method toArray_stack (List::Link $self: @stack) {
+        tail_call $self->tail->toArray_stack(@stack, $self->head);
+    }
 
-    method toArray () {
+    method toArray_iterative () {
         # iterative, so we'll maintain our own stack
-        my @array;
+        my @stack;
         my $list = $self;
         while ($list->isa('List::Link')) {
-            push @array, $list->head;
+            push @stack, $list->head;
             $list = $list->tail;
         }
-        return @array;
+        return @stack;
     }
+    *toArray = \&toArray_iterative;
 
     multi method take (List::Empty $self: Int $n) { 
         return $self;

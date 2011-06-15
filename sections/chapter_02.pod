@@ -179,7 +179,131 @@ and we'll take advantage of it.
         );
     }
 
+=head2 Tail calls and recursion limits
+
+In the method C<fromArray> above, we recurse back into the same method until
+we've converted all the elements of the array into a List.  Every time we do
+this, we are making a new method call, which is added to the call stack.  This
+requires storing information about the caller, and to support these very
+dynamic languages, may require quite a I<lot> of information... And finally,
+once we get to the base case, and are ready to return the result, the
+interpreter will then have to hop back through the stack, one level at a time,
+till it gets back to the top, passing the result information up all the way to
+the top.
+
+If we make many of these recursive calls, then the interpreter may start to
+complain about what we're doing.  For example, in Perl:
+
+    Deep recursion on subroutine "List::fromArray" at foo.pl line 20
+
+There are ways to eliminate these warnings
+
+    no warnings 'recursion';
+    $DB::deep = 100_000_000; # some big number, greater than maximum number of
+                             # recursions
+
+But that would only be papering over the synptoms, the root problem would
+remain: we may blow all the memory allocated to the call stack, and the
+interpreter may crash.
+
+In languages like Scheme and Haskell, which are built around recursive data
+structures, the compilers will naturally do Tail Call Elimination. This means
+that if the last action in a routine is to call another method (often, but not
+always, the current method) then you can simply jump to that method, without
+having to add the overhead of storing the call on the stack.
+
+Though Perl can't do this automatically, there are two modules on CPAN by
+Yuval Koogman that will allow you to handle this elegantly,
+C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster, but only
+handles function calls that recurse into itself.  The former can handle tail
+calls to any subroutine, and also object methods, so we'll use that.
+
+By default, C<Sub::Call::Tail> exports a function called C<tail>... which could
+confuse both the reader and C<perl>.  We'll use the ability to import an aliased
+function, and call it C<tail_call> instead, which makes it much clearer!
+
+ # the slightly nicer 'use' line is implemented in 
+ # https://github.com/osfameron/sub-call-tail release pending ;-)
+
+    # take that, recursion!
+    use Sub::Import 'Sub::Call::Tail' tail => { -as => 'tail_call' };
+    # use Sub::Call::Tail tail => { -as => 'tail_call'};
+
+    multi method fromArray ($self: $head, @tail) {
+        tail_call List::Link->new(
+            head => $head,
+            tail => $self->fromArray(@tail),
+        );
+    }
+
+There are similar workarounds available for Python, Ruby, and Javascript.  They
+will usually use a C<goto> statement in some form, perhaps a structured one
+that either jumps back to the beginning of the block.  (The Perl hack is
+implemented with a C<goto &function> call, which, though it shares the same
+name as the reviled control-flow operation, actually does something slightly
+cleaner, simply replacing the currently running subroutine with the new one.)
+
 =head2 Getting data out of a list
+
+=head3 Converting back to array
+
+It may sometimes be convenient to flatten our List structure back to a native
+array.  We could do this again with recursion.
+
+    multi method toArray_recursive (List::Empty $self:) { 
+        return ()
+    }
+    multi method toArray_recursive (List::Link $self:) {
+        return ($self->head, $self->tail->toArray_recursive);
+    }
+
+But notice how we don't have a convenient function to make a tail call on. The
+C<toArray> method is called, but as I<part> of the expression only.  In general,
+there are two ways to handle this: 
+
+=over
+
+=item * convert the function into a tail-recursive one, by extracting out the stack
+
+=item * convert the function into an iterative one, that manages its own stack
+
+=back
+
+The best general tutorial to these methods using a dynamic programming language
+may well be Mark Jason Dominus's I<Higher Order Perl>, now freely available online
+at http://hop.perl.plover.com/
+
+We'll just briefly look at an example of each technique.
+
+=head4 converting the function into a tail-recursive one
+
+We'll need to extract the returned C<@array> and instead pass it onwards within
+the tail call.
+
+    multi method toArray_stack (List::Empty $self: @stack) {
+        return @stack;
+    }
+    multi method toArray_stack (List::Link $self: @stack) {
+        tail_call $self->tail->toArray_stack(@stack, $self->head);
+    }
+
+=head4 converting the function into an iterative one
+
+Here we will entirely eschew the idea of making a recursive function call, and
+instead loop through the list using a classic imperative programming statement,
+the C<while> loop.  We'll also manage our own stack, as a variable C<@stack>.
+
+    method toArray_iterative () {
+        my @stack;
+        my $list = $self;
+        while ($list->isa('List::Link')) {
+            push @stack, $list->head;
+            $list = $list->tail;
+        }
+        return @stack;
+    }
+
+=head3 Indexing into the list
 
 While arrays and lists both store collections of data, the representations make
 certain tasks easier or more difficult.  Accessing an item positionally, for
@@ -216,79 +340,17 @@ But if we've passed a positive integer, then we can simply recurse down the
 tail, looking for the C<nth> of the next lowest integer, until we get to 0.
 
     multi method nth (Int $pos where { $_ > 0 }) {
-        return $self->tail->nth( $pos - 1 );
+        tail_call $self->tail->nth( $pos - 1 );
     }
 
-Notice how we've specified all the valid ways to call this method.  If we call C<$list-E<gt>nth("foo")> or
-C<$list-E<gt>nth(-1)> then Moose will throw an error for us automatically!
+Notice how we've specified all the valid ways to call this method.  If we call
+C<$list-E<gt>nth("foo")> or C<$list-E<gt>nth(-1)> then Moose will throw an
+error for us automatically!
 
 As with the fromArray method, this kind of recursive code is very elegant, but
 there is a teensy little problem: dynamic languages were never designed for
 this kind of code structure, and that means that, by default, they do have a
 few little hiccups that we need to be aware of.
-
-=head2 Tail calls and recursion limits
-
-TODO: move this to after the fromArray method, so it's after the FIRST recursive
-definition
-
-In the method C<nth> above, we recurse back into the same method until we reach
-the right position.  Every time we do this, we are making a new method call,
-which is added to the call stack.  This requires storing information about the
-caller, and to support these very dynamic languages, may require quite a
-I<lot> of information... And finally, once we get to the base case, and are
-ready to return the result, the interpreter will then have to hop back through
-the stack, one level at a time, till it gets back to the top, passing the result
-information up all the way to the top.
-
-If we make many of these recursive calls, then the interpreter may start to
-complain about what we're doing.  For example, in Perl:
-
-    Deep recursion on subroutine "List::nth" at foo.pl line 20
-
-There are ways to eliminate these warnings
-
-    no warnings 'recursion';
-    $DB::deep = 100_000_000; # some big number, greater than maximum number of
-                             # recursions
-
-But that would only be papering over the synptoms, the root problem would
-remain: we may blow all the memory allocated to the call stack, and the
-interpreter may crash.
-
-In languages like Scheme and Haskell, which are built around recursive data
-structures, the compilers will naturally do Tail Call Elimination. This means
-that if the last action in a routine is to call another method (often, but not
-always, the current method) then you can simply jump to that method, without
-having to add the overhead of storing the call on the stack.
-
-Though Perl can't do this automatically, there are two modules on CPAN by
-Yuval Koogman that will allow you to handle this elegantly,
-C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster, but only
-handles function calls that recurse into itself.  The former can handle tail
-calls to any subroutine, and also object methods, so we'll use that.
-
-By default, C<Sub::Call::Tail> exports a function called C<tail>... which could
-confuse both the reader and C<perl>.  We'll use the ability to import an aliased
-function, and call it C<tail_call> instead, which makes it much clearer!
-
- # the slightly nicer 'use' line is implemented in 
- # https://github.com/osfameron/sub-call-tail release pending ;-)
-
-    # take that, recursion!
-    use Sub::Import 'Sub::Call::Tail' tail => { -as => 'tail_call' };
-    # use Sub::Call::Tail tail => { -as => 'tail_call'};
-
-    multi method nth (Int $pos where { $_ > 0 }) {
-        tail_call $self->tail->nth( $pos - 1 );
-    }
-
-There are similar workarounds available for Python, Ruby, and Javascript.  They
-will usually use a C<goto> statement in some form, perhaps a structured one
-that either jumps back to the beginning of the block.  (The Perl hack is
-implemented with a C<goto &function> call, which, though it shares the same
-name as the reviled control-flow operation, actually does something slightly
-cleaner, simply replacing the currently running subroutine with the new one.)
 
 =head2 Transformations on lists
 
