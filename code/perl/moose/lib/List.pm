@@ -22,6 +22,42 @@ role List {
         );
     }
 
+=begin tricky to optimize as tail calls
+
+    multi method toArray (List::Empty $self:) { 
+        return ()
+    }
+    multi method toArray (List::Link $self:) {
+        ($self->head, $self->tail->toArray);
+    }
+
+=end
+=cut
+
+    method toArray () {
+        # iterative, so we'll maintain our own stack
+        my @array;
+        my $list = $self;
+        while ($list->isa('List::Link')) {
+            push @array, $list->head;
+            $list = $list->tail;
+        }
+        return @array;
+    }
+
+    multi method take (List::Empty $self: Int $n) { 
+        return $self;
+    }
+    multi method take (List::Link $self: Int $n where { $_ == 0 }) {
+        return List::Empty->new;
+    }
+    multi method take (List::Link $self: Int $n where { $_ > 0 }) {
+        tail_call List::Link->new({
+            head => $self->head,
+            tail => $self->tail->take( $n - 1 ),
+        });
+    }
+
     multi method nth (List::Empty $self: Int $pos) { 
         die "Can't index into an Empty list"; 
     }

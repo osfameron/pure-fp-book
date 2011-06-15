@@ -25,6 +25,11 @@ dies_ok {
     $list->nth(-1);
 } 'exception on <0';
 
+is_deeply [$list->toArray], [10..20], 'toArray';
+is_deeply [$list->take(5)->toArray], 
+           [10..14], 'take 4';
+
+
 my @users = ({
     first_name => 'Bob',
     last_name  => 'Smith',
@@ -65,6 +70,8 @@ $infinite = List::Link->new({
     lazyTail => sub { $infinite },
 });
 is $infinite->nth(42), 'foo', 'The meaning of life';
+is_deeply [$infinite->take(10)->toArray], [('foo')x10], 'take from infinite list';
+
 sub const ($x,$y) { return $x }
 is $infinite->foldr(\&const, undef), 'foo', 'foldr on infinite list';
 
