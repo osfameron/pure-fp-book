@@ -417,7 +417,7 @@ often see the operation that we just defined as C<map> called C<fmap> instead
 one that operates on a collection (or any other type of container) is called
 I<lifting> the function.
 
-=head3 C<filter>
+=head3 C<filter>ing the list
 
 Another key operation on any collection type is to filter them by some criteria.
 All the dynamic languages offer this facility for their native types, usually
@@ -442,6 +442,22 @@ again recursively.
     }
 
 =head3 C<fold>
+
+Folds are the result of repeatedly applying an operation to every pair of
+values in a List until you get a single value.  An example could finding the
+sum of a list of numbers.
+
+    sum (1,2,3,4,5) = 1 + 2 + 3 + 4 + 5
+
+We could think of the sum as:
+
+    1 + (2 + (3 + (4 + 5))) <-- a right fold
+
+or as
+
+    (((1 + 2) + 3) + 4) + 5 <-- a left fold
+
+
 
 =head2 Modifying the list (inserting, deleting, editing)
 
