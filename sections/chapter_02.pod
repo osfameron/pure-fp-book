@@ -15,6 +15,10 @@
     - Modifying, inserting, deleting list elements
         - mutable versus immutable
         - compare with a mutable Vector (such as Perl's arrays)
+    - Copying lists
+        - how to deep copy an immutable data-structure ;-)
+        - caching Empty (MooseX::Singleton)
+        - caching generally (Memoize?)
     - Infinite lists
         - laziness
         - implementation
@@ -236,6 +240,9 @@ few little hiccups that we need to be aware of.
 
 =head2 Tail calls and recursion limits
 
+TODO: move this to after the fromArray method, so it's after the FIRST recursive
+definition
+
 In the method C<nth> above, we recurse back into the same method until we reach
 the right position.  Every time we do this, we are making a new method call,
 which is added to the call stack.  This requires storing information about the
@@ -360,6 +367,28 @@ one that operates on a collection (or any other type of container) is called
 I<lifting> the function.
 
 =head3 C<filter>
+
+Another key operation on any collection type is to filter them by some criteria.
+All the dynamic languages offer this facility for their native types, usually
+calling them C<grep> or C<filter>, or in some cases using a more general
+facility called List Comprehensions.  We'll implement the simple filter case,
+again recursively.
+
+    multi method filter (List::Empty $self: CodeRef $f) { 
+        return $self;
+    }
+    multi method filter (List::Link $self: CodeRef $f) {
+        my $head = $self->head;
+        if ($f->($head)) {
+            tail_call $self->new( 
+                head => $head,
+                tail => $self->tail->filter( $f ),
+            );
+        }
+        else {
+            tail_call $self->tail->filter( $f );
+        }
+    }
 
 =head3 C<fold>
 
