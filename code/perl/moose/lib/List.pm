@@ -81,8 +81,23 @@ role List {
 }
 
 class List::Link with List {
-    has head => ( is => 'ro', isa => 'Any' );
-    has tail => ( is => 'ro', isa => 'List' ); 
+    has head => ( 
+        is => 'ro', 
+        isa => 'Any',
+    );
+    has tail => ( 
+        is      => 'ro', 
+        isa     => 'List',
+        lazy    => 1, 
+        default => method { $self->_lazyTail->() },
+    ); 
+    has lazyTail => ( 
+        # this is conceptually a write-only attribute, so _lazyTail
+        # is flagged as "private"
+        is     => 'bare', 
+        reader => '_lazyTail',
+        isa    => 'CodeRef',
+    );
 }
 
 class List::Empty with List {
