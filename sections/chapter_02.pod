@@ -15,6 +15,9 @@
     - Modifying, inserting, deleting list elements
         - mutable versus immutable
         - compare with a mutable Vector (such as Perl's arrays)
+    - Infinite lists
+        - laziness
+        - implementation
     - Doubly-linked lists?
         - mutable... immutable?
         - pointers
