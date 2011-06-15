@@ -85,18 +85,7 @@ The head is the letter C<"h">, and the tail is the list
     [e.]->[l.]->[l.]->[o ]
 
 So we've seen lists of 4 and 5 elements.  You could grow the list arbitrarily
-large, by continuing to add links to new elements.  Let's compare this with
-an array:
-
-     0  1  2  3  4 
-    [h][e][l][l][o]
-
-The array has 5 slots, stored next to each other in memory.  This means that
-we can immediately access any of them in any order.  However, if we want to 
-add a new element, we'd have to resize the array.  We'll have a look at this
-in more detail later.
-
-TODO: more look at a dynamic array type
+large, by continuing to add links to new elements.  
 
 How about smaller lists?
 
@@ -393,3 +382,15 @@ again recursively.
 =head3 C<fold>
 
 =head2 Modifying the list (inserting, deleting, editing)
+
+=head2 Compare to a mutable list TODO
+
+Let's compare this with an array:
+
+     0  1  2  3  4 
+    [h][e][l][l][o]
+
+The array has 5 slots, stored next to each other in memory.  This means that
+we can immediately access any of them in any order.  However, if we want to 
+add a new element, we'd have to resize the array.  We'll have a look at this
+in more detail later.
