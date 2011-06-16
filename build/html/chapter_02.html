@@ -154,11 +154,13 @@
         return List::Empty-&gt;new;
     }
     multi method fromArray ($self: $head, @tail) {
-        tail_call List::Link-&gt;new(
+        return List::Link-&gt;new(
             head =&gt; $head,
             tail =&gt; $self-&gt;fromArray(@tail),
         );
     }</code></pre>
+
+<p>This kind of recursive code is very elegant. But there is a teensy little problem: dynamic languages were never designed for this kind of code structure, and that means that, by default, they do have a few little hiccups that we need to be aware of.</p>
 
 <h3>Tail calls and recursion limits</h3>
 
@@ -198,59 +200,7 @@
 
 <p>There are similar workarounds available for Python, Ruby, and Javascript. They will usually use a <code>goto</code> statement in some form, perhaps a structured one that either jumps back to the beginning of the block. (The Perl hack is implemented with a <code>goto &function</code> call, which, though it shares the same name as the reviled control-flow operation, actually does something slightly cleaner, simply replacing the currently running subroutine with the new one.)</p>
 
-<h3>Getting data out of a list</h3>
-
-<h4>Converting back to array</h4>
-
-<p>It may sometimes be convenient to flatten our List structure back to a native array. We could do this again with recursion.</p>
-
-<pre><code>    multi method toArray_recursive (List::Empty $self:) { 
-        return ()
-    }
-    multi method toArray_recursive (List::Link $self:) {
-        return ($self-&gt;head, $self-&gt;tail-&gt;toArray_recursive);
-    }</code></pre>
-
-<p>But notice how we don't have a convenient function to make a tail call on. The <code>toArray</code> method is called, but as <i>part</i> of the expression only. In general, there are two ways to handle this:</p>
-
-<ul>
-
-<li>convert the function into a tail-recursive one, by extracting out the stack</li>
-
-<li>convert the function into an iterative one, that manages its own stack</li>
-
-</ul>
-
-<p>The best general tutorial to these methods using a dynamic programming language may well be Mark Jason Dominus's <i>Higher Order Perl</i>, now freely available online at http://hop.perl.plover.com/</p>
-
-<p>We'll just briefly look at an example of each technique.</p>
-
-<h5>converting the function into a tail-recursive one</h5>
-
-<p>We'll need to extract the returned <code>@array</code> and instead pass it onwards within the tail call.</p>
-
-<pre><code>    multi method toArray_stack (List::Empty $self: @stack) {
-        return @stack;
-    }
-    multi method toArray_stack (List::Link $self: @stack) {
-        tail_call $self-&gt;tail-&gt;toArray_stack(@stack, $self-&gt;head);
-    }</code></pre>
-
-<h5>converting the function into an iterative one</h5>
-
-<p>Here we will entirely eschew the idea of making a recursive function call, and instead loop through the list using a classic imperative programming statement, the <code>while</code> loop. We'll also manage our own stack, as a variable <code>@stack</code>.</p>
-
-<pre><code>    method toArray_iterative () {
-        my @stack;
-        my $list = $self;
-        while ($list-&gt;isa(&#39;List::Link&#39;)) {
-            push @stack, $list-&gt;head;
-            $list = $list-&gt;tail;
-        }
-        return @stack;
-    }</code></pre>
-
-<h4>Indexing into the list</h4>
+<h3>Getting data out of a list - indexing into the list</h3>
 
 <p>While arrays and lists both store collections of data, the representations make certain tasks easier or more difficult. Accessing an item positionally, for example, is trivial with an array:</p>
 
@@ -285,8 +235,6 @@
     }</code></pre>
 
 <p>Notice how we've specified all the valid ways to call this method. If we call <code>$list-&gt;nth("foo")</code> or <code>$list-&gt;nth(-1)</code> then Moose will throw an error for us automatically!</p>
-
-<p>As with the fromArray method, this kind of recursive code is very elegant, but there is a teensy little problem: dynamic languages were never designed for this kind of code structure, and that means that, by default, they do have a few little hiccups that we need to be aware of.</p>
 
 <h3>Transformations on lists</h3>
 
@@ -381,6 +329,56 @@
 <pre><code>    (((1 + 2) + 3) + 4) + 5 &lt;-- a left fold</code></pre>
 
 <p># NB: mention Foldable</p>
+
+<h3>Converting back to array</h3>
+
+<p>It may sometimes be convenient to flatten our List structure back to a native array. We could do this again with recursion.</p>
+
+<pre><code>    multi method toArray_recursive (List::Empty $self:) { 
+        return ()
+    }
+    multi method toArray_recursive (List::Link $self:) {
+        return ($self-&gt;head, $self-&gt;tail-&gt;toArray_recursive);
+    }</code></pre>
+
+<p>But notice how we don't have a convenient function to make a tail call on. The <code>toArray</code> method is called, but as <i>part</i> of the expression only. In general, there are two ways to handle this:</p>
+
+<ul>
+
+<li>convert the function into a tail-recursive one, by extracting out the stack</li>
+
+<li>convert the function into an iterative one, that manages its own stack</li>
+
+</ul>
+
+<p>The best general tutorial to these methods using a dynamic programming language may well be Mark Jason Dominus's <i>Higher Order Perl</i>, now freely available online at http://hop.perl.plover.com/</p>
+
+<p>We'll just briefly look at an example of each technique.</p>
+
+<h4>converting the function into a tail-recursive one</h4>
+
+<p>We'll need to extract the returned <code>@array</code> and instead pass it onwards within the tail call.</p>
+
+<pre><code>    multi method toArray_stack (List::Empty $self: @stack) {
+        return @stack;
+    }
+    multi method toArray_stack (List::Link $self: @stack) {
+        tail_call $self-&gt;tail-&gt;toArray_stack(@stack, $self-&gt;head);
+    }</code></pre>
+
+<h4>converting the function into an iterative one</h4>
+
+<p>Here we will entirely eschew the idea of making a recursive function call, and instead loop through the list using a classic imperative programming statement, the <code>while</code> loop. We'll also manage our own stack, as a variable <code>@stack</code>.</p>
+
+<pre><code>    method toArray_iterative () {
+        my @stack;
+        my $list = $self;
+        while ($list-&gt;isa(&#39;List::Link&#39;)) {
+            push @stack, $list-&gt;head;
+            $list = $list-&gt;tail;
+        }
+        return @stack;
+    }</code></pre>
 
 <h3>Modifying the list (inserting, deleting, editing)</h3>
 
