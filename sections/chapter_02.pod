@@ -173,11 +173,16 @@ and we'll take advantage of it.
         return List::Empty->new;
     }
     multi method fromArray ($self: $head, @tail) {
-        tail_call List::Link->new(
+        return List::Link->new(
             head => $head,
             tail => $self->fromArray(@tail),
         );
     }
+
+This kind of recursive code is very elegant.  But there is a teensy little
+problem: dynamic languages were never designed for this kind of code structure,
+and that means that, by default, they do have a few little hiccups that we need
+to be aware of.
 
 =head2 Tail calls and recursion limits
 
@@ -243,67 +248,7 @@ implemented with a C<goto &function> call, which, though it shares the same
 name as the reviled control-flow operation, actually does something slightly
 cleaner, simply replacing the currently running subroutine with the new one.)
 
-=head2 Getting data out of a list
-
-=head3 Converting back to array
-
-It may sometimes be convenient to flatten our List structure back to a native
-array.  We could do this again with recursion.
-
-    multi method toArray_recursive (List::Empty $self:) { 
-        return ()
-    }
-    multi method toArray_recursive (List::Link $self:) {
-        return ($self->head, $self->tail->toArray_recursive);
-    }
-
-But notice how we don't have a convenient function to make a tail call on. The
-C<toArray> method is called, but as I<part> of the expression only.  In general,
-there are two ways to handle this: 
-
-=over
-
-=item * convert the function into a tail-recursive one, by extracting out the stack
-
-=item * convert the function into an iterative one, that manages its own stack
-
-=back
-
-The best general tutorial to these methods using a dynamic programming language
-may well be Mark Jason Dominus's I<Higher Order Perl>, now freely available online
-at http://hop.perl.plover.com/
-
-We'll just briefly look at an example of each technique.
-
-=head4 converting the function into a tail-recursive one
-
-We'll need to extract the returned C<@array> and instead pass it onwards within
-the tail call.
-
-    multi method toArray_stack (List::Empty $self: @stack) {
-        return @stack;
-    }
-    multi method toArray_stack (List::Link $self: @stack) {
-        tail_call $self->tail->toArray_stack(@stack, $self->head);
-    }
-
-=head4 converting the function into an iterative one
-
-Here we will entirely eschew the idea of making a recursive function call, and
-instead loop through the list using a classic imperative programming statement,
-the C<while> loop.  We'll also manage our own stack, as a variable C<@stack>.
-
-    method toArray_iterative () {
-        my @stack;
-        my $list = $self;
-        while ($list->isa('List::Link')) {
-            push @stack, $list->head;
-            $list = $list->tail;
-        }
-        return @stack;
-    }
-
-=head3 Indexing into the list
+=head2 Getting data out of a list - indexing into the list
 
 While arrays and lists both store collections of data, the representations make
 certain tasks easier or more difficult.  Accessing an item positionally, for
@@ -346,11 +291,6 @@ tail, looking for the C<nth> of the next lowest integer, until we get to 0.
 Notice how we've specified all the valid ways to call this method.  If we call
 C<$list-E<gt>nth("foo")> or C<$list-E<gt>nth(-1)> then Moose will throw an
 error for us automatically!
-
-As with the fromArray method, this kind of recursive code is very elegant, but
-there is a teensy little problem: dynamic languages were never designed for
-this kind of code structure, and that means that, by default, they do have a
-few little hiccups that we need to be aware of.
 
 =head2 Transformations on lists
 
@@ -458,6 +398,65 @@ or as
     (((1 + 2) + 3) + 4) + 5 <-- a left fold
 
 # NB: mention Foldable
+
+=head2 Converting back to array
+
+It may sometimes be convenient to flatten our List structure back to a native
+array.  We could do this again with recursion.
+
+    multi method toArray_recursive (List::Empty $self:) { 
+        return ()
+    }
+    multi method toArray_recursive (List::Link $self:) {
+        return ($self->head, $self->tail->toArray_recursive);
+    }
+
+But notice how we don't have a convenient function to make a tail call on. The
+C<toArray> method is called, but as I<part> of the expression only.  In general,
+there are two ways to handle this: 
+
+=over
+
+=item * convert the function into a tail-recursive one, by extracting out the stack
+
+=item * convert the function into an iterative one, that manages its own stack
+
+=back
+
+The best general tutorial to these methods using a dynamic programming language
+may well be Mark Jason Dominus's I<Higher Order Perl>, now freely available online
+at http://hop.perl.plover.com/
+
+We'll just briefly look at an example of each technique.
+
+=head3 converting the function into a tail-recursive one
+
+We'll need to extract the returned C<@array> and instead pass it onwards within
+the tail call.
+
+    multi method toArray_stack (List::Empty $self: @stack) {
+        return @stack;
+    }
+    multi method toArray_stack (List::Link $self: @stack) {
+        tail_call $self->tail->toArray_stack(@stack, $self->head);
+    }
+
+=head3 converting the function into an iterative one
+
+Here we will entirely eschew the idea of making a recursive function call, and
+instead loop through the list using a classic imperative programming statement,
+the C<while> loop.  We'll also manage our own stack, as a variable C<@stack>.
+
+    method toArray_iterative () {
+        my @stack;
+        my $list = $self;
+        while ($list->isa('List::Link')) {
+            push @stack, $list->head;
+            $list = $list->tail;
+        }
+        return @stack;
+    }
+
 
 =head2 Modifying the list (inserting, deleting, editing)
 
