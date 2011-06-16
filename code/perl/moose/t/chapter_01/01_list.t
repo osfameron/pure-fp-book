@@ -4,10 +4,9 @@ use Test::Moose;
 use Test::Exception;
 
 use signatures;
-use Data::Thunk;
 use Data::Dumper;
 
-use_ok ('List');
+use_ok('List');
 
 my $list = List->fromArray( 10..20 );
 
@@ -77,5 +76,15 @@ is_deeply [$infinite->take(10)->toArray], [('foo')x10], 'take from infinite list
 
 sub const ($x,$y) { return $x }
 is $infinite->foldr(\&const, undef), 'foo', 'foldr on infinite list';
+
+# import List 'cons'; # doesn't work
+sub cons ($head, $tail) {
+    return List::Link->new(
+        head => $head,
+        tail => $tail // List::Empty->new,
+    );
+}
+my $list2 = cons('h', cons('e', cons('l', cons('l', cons('o')))));
+is_deeply [$list2->toArray], [split //, 'hello'], "cons'd list ok";
 
 done_testing;
