@@ -1,0 +1,13 @@
+#!/bin/bash
+
+DIR=`dirname $0`
+
+git checkout gh-pages
+git merge master
+perl $DIR/build_chapters.pl
+perl $DIR/build_html.pl
+git add build/html/
+git commit -m "Generated gh-pages with build_gh_pages"
+git push github gh-pages
+git checkout -
+
