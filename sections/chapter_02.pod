@@ -92,9 +92,9 @@ How about smaller lists?
     1 element:   [o ]
     0 elements:  ()
 
-The 0-element list doesn't have a head or a tail.  It's just an empty list,
-which is a different case to what we've seen.  But how about the 1-element
-list?  It has a C<head>, but does it have a C<tail>?
+The 0-element list doesn't have a head or a tail.  It's just an empty list.
+But how about the 1-element list?  It has a C<head>, but does it have a
+C<tail>?
 
 Well, we saw that the tail of the list C<"hello"> was the list C<"ello">.
 So the tail of C<"o"> should be the list C<"">, i.e. the empty list.
@@ -105,9 +105,10 @@ This means that really our lists look like:
 
     [h.]->[e.]->[l.]->[l.]->[o.]->()
 
-So a list can be one of two things:
+Which means that all lists have a head I<and> a tail. Unless they're the empty
+list, which has neither.  i.e. a list can be one of two things:
 
-    ()      an empty list
+    ()      the empty list
     [x.]->  a linking cell the connects a value to another list
             (where the other list is either another linking cell
             or an empty list)
@@ -131,6 +132,13 @@ Note that all of the code examples are implemented and tested at
 C<https://github.com/osfameron/pure-fp-book/tree/master/code>, so you can
 easily check how things hang together. If there's no implementation in your
 language, then please fork the code on github and contribute!
+
+As we saw, there are two types of list.  From an Object Oriented perspective,
+we might think of implementing this with an Abstract Base Class (i.e. one that
+only acts as a superclass, to tie together related functionality and type
+information, but which can't be instantiated into a C<-E<gt>new> object; and
+then with concrete subclasses.  The Moosey way to do this is to use a C<Role>
+(also known as a trait, and similar in many ways to Ruby's mixins).
 
     use MooseX::Declare;
     BEGIN { role_type 'List' }
@@ -158,24 +166,47 @@ With this code, we could already create a list, but it'd be a little verbose:
             head => 'e',
             tail => List::Link->new(...
 
-So let's add a little sugar.  If the array is empty, we return an empty list.
-Otherwise we create a link from the first element of the array to the rest of
-the list.  Typically in Perl we might use a condition like C<if> to code these
-two cases.  But in both Functional and Object Oriented programming, it's often
-much more elegant to use pattern matching (of which "multiple dispatch" is a
-variant.)  C<Moose> provides a rather nice and flexible way of declaring these,
-and we'll take advantage of it.
+So let's add a little sugar.  We'll create a function C<fromArray> that we'll
+call like so:
+
+    my $list = List->fromArray( 1..10 );
+
+As lists are a recursive data structure, it makes sense to implement this in
+a recursive way so:
+
+=over
+
+=item * 
+
+If the array is empty, we return an empty list.  
+
+=item * 
+
+If the array has one element, we'll link that with the empty list
+
+=item * 
+
+... and, in general, we'll link the first element in the array with the result
+of calling C<fromArray> on the remainder of the array.
+
+=back
+
+Typically in Perl we might use a condition like C<if> to distinguish between
+these cases.  But in both Functional and Object Oriented programming, it's
+often much more elegant to use pattern matching (of which "multiple dispatch"
+is a variant.) C<Moose> provides a rather nice and flexible way of declaring
+these, and we'll take advantage of it.
 
     use MooseX::MultiMethods;
 
-    # can be called as a class method
-    multi method fromArray ($self:) {
+    # can be called as a class method, or on an object
+    multi method fromArray ($class:) {
         return List::Empty->new;
     }
-    multi method fromArray ($self: $head, @tail) {
+    multi method fromArray ($class: $head, @tail) {
         return List::Link->new(
             head => $head,
-            tail => $self->fromArray(@tail),
+            tail => $class->fromArray(@tail),
         );
     }
 
@@ -217,15 +248,18 @@ that if the last action in a routine is to call another method (often, but not
 always, the current method) then you can simply jump to that method, without
 having to add the overhead of storing the call on the stack.
 
-Though Perl can't do this automatically, there are two modules on CPAN by
-Yuval Koogman that will allow you to handle this elegantly,
-C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster, but only
-handles function calls that recurse into itself.  The former can handle tail
-calls to any subroutine, and also object methods, so we'll use that.
+Though Perl can't (yet?) do this kind of optimization automatically, there are
+two modules on CPAN by Yuval Koogman that will allow you to handle this
+elegantly, C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster,
+but only handles function calls that recurse into itself.  The former can
+handle tail calls to any subroutine, and also object methods, so we'll use
+that.
 
-By default, C<Sub::Call::Tail> exports a function called C<tail>... which could
-confuse both the reader and C<perl>.  We'll use the ability to import an aliased
-function, and call it C<tail_call> instead, which makes it much clearer!
+By default, C<Sub::Call::Tail> exports a function called C<tail>.  As our List
+class already has a method C<tail> (meaning something quite different), this
+could confuse both the reader and C<perl> itself.  So we'll take advantage of
+the facility to import an aliased function, and call it C<tail_call> instead,
+which makes it much clearer!
 
  # the slightly nicer 'use' line is implemented in 
  # https://github.com/osfameron/sub-call-tail release pending ;-)
@@ -243,10 +277,13 @@ function, and call it C<tail_call> instead, which makes it much clearer!
 
 There are similar workarounds available for Python, Ruby, and Javascript.  They
 will usually use a C<goto> statement in some form, perhaps a structured one
-that either jumps back to the beginning of the block.  (The Perl hack is
-implemented with a C<goto &function> call, which, though it shares the same
-name as the reviled control-flow operation, actually does something slightly
-cleaner, simply replacing the currently running subroutine with the new one.)
+that either jumps back to the beginning of the block.  
+
+(Interestingly, though the Perl hack in C<Sub::Call::Tail> is implemented with
+a C<goto &function> call, which shares the same name as the reviled
+control-flow operation, it's substantially cleaner than you might fear.  This
+type of C<goto> simply replaces the currently running subroutine with
+a new one, a little like Unix's C<exec> switches to a new process.)
 
 =head2 Getting data out of a list - indexing into the list
 
@@ -293,6 +330,11 @@ C<$list-E<gt>nth("foo")> or C<$list-E<gt>nth(-1)> then Moose will throw an
 error for us automatically!
 
 =head2 Transformations on lists
+
+Every standard library for manipulating lists should come with a number of basic
+transformations, for mapping all the values with a function, filtering them
+according to some criteria, or reducing the collection to a single value. We'll
+look at each of these in turn.
 
 =head3 Applying a function to a list: C<map>
 
@@ -417,15 +459,20 @@ there are two ways to handle this:
 
 =over
 
-=item * convert the function into a tail-recursive one, by extracting out the stack
+=item * 
 
-=item * convert the function into an iterative one, that manages its own stack
+convert the function into a tail-recursive one, by extracting out the stack
+
+=item * 
+
+convert the function into an iterative one, that manages its own stack
 
 =back
 
 The best general tutorial to these methods using a dynamic programming language
-may well be Mark Jason Dominus's I<Higher Order Perl>, now freely available online
-at http://hop.perl.plover.com/
+may well be Mark Jason Dominus's I<Higher Order Perl>, now freely available
+online at http://hop.perl.plover.com/ (though it's worth buying, whatever your
+programming language of choice).
 
 We'll just briefly look at an example of each technique.
 
