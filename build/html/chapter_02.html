@@ -89,7 +89,7 @@
 <pre><code>    1 element:   [o ]
     0 elements:  ()</code></pre>
 
-<p>The 0-element list doesn't have a head or a tail. It's just an empty list, which is a different case to what we've seen. But how about the 1-element list? It has a <code>head</code>, but does it have a <code>tail</code>?</p>
+<p>The 0-element list doesn't have a head or a tail. It's just an empty list. But how about the 1-element list? It has a <code>head</code>, but does it have a <code>tail</code>?</p>
 
 <p>Well, we saw that the tail of the list <code>"hello"</code> was the list <code>"ello"</code>. So the tail of <code>"o"</code> should be the list <code>""</code>, i.e. the empty list.</p>
 
@@ -99,9 +99,9 @@
 
     [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()</code></pre>
 
-<p>So a list can be one of two things:</p>
+<p>Which means that all lists have a head <i>and</i> a tail. Unless they're the empty list, which has neither. i.e. a list can be one of two things:</p>
 
-<pre><code>    ()      an empty list
+<pre><code>    ()      the empty list
     [x.]-&gt;  a linking cell the connects a value to another list
             (where the other list is either another linking cell
             or an empty list)</code></pre>
@@ -118,6 +118,8 @@
 <p>However, in this book we'll use objects declared using <code>Moose</code> wherever we can. This will give more straight-forward code, as well as having a lot of power that we'll need when we go on to more complex scenarios.</p>
 
 <p>Note that all of the code examples are implemented and tested at <code>https://github.com/osfameron/pure-fp-book/tree/master/code</code>, so you can easily check how things hang together. If there's no implementation in your language, then please fork the code on github and contribute!</p>
+
+<p>As we saw, there are two types of list. From an Object Oriented perspective, we might think of implementing this with an Abstract Base Class (i.e. one that only acts as a superclass, to tie together related functionality and type information, but which can't be instantiated into a <code>-&gt;new</code> object; and then with concrete subclasses. The Moosey way to do this is to use a <code>Role</code> (also known as a trait, and similar in many ways to Ruby's mixins).</p>
 
 <pre><code>    use MooseX::Declare;
     BEGIN { role_type &#39;List&#39; }
@@ -145,18 +147,34 @@
             head =&gt; &#39;e&#39;,
             tail =&gt; List::Link-&gt;new(...</code></pre>
 
-<p>So let's add a little sugar. If the array is empty, we return an empty list. Otherwise we create a link from the first element of the array to the rest of the list. Typically in Perl we might use a condition like <code>if</code> to code these two cases. But in both Functional and Object Oriented programming, it's often much more elegant to use pattern matching (of which "multiple dispatch" is a variant.) <code>Moose</code> provides a rather nice and flexible way of declaring these, and we'll take advantage of it.</p>
+<p>So let's add a little sugar. We'll create a function <code>fromArray</code> that we'll call like so:</p>
+
+<pre><code>    my $list = List-&gt;fromArray( 1..10 );</code></pre>
+
+<p>As lists are a recursive data structure, it makes sense to implement this in a recursive way so:</p>
+
+<ul>
+
+<li>If the array is empty, we return an empty list.</li>
+
+<li>If the array has one element, we'll link that with the empty list</li>
+
+<li>... and, in general, we'll link the first element in the array with the result of calling <code>fromArray</code> on the remainder of the array.</li>
+
+</ul>
+
+<p>Typically in Perl we might use a condition like <code>if</code> to distinguish between these cases. But in both Functional and Object Oriented programming, it's often much more elegant to use pattern matching (of which "multiple dispatch" is a variant.) <code>Moose</code> provides a rather nice and flexible way of declaring these, and we'll take advantage of it.</p>
 
 <pre><code>    use MooseX::MultiMethods;
 
-    # can be called as a class method
-    multi method fromArray ($self:) {
+    # can be called as a class method, or on an object
+    multi method fromArray ($class:) {
         return List::Empty-&gt;new;
     }
-    multi method fromArray ($self: $head, @tail) {
+    multi method fromArray ($class: $head, @tail) {
         return List::Link-&gt;new(
             head =&gt; $head,
-            tail =&gt; $self-&gt;fromArray(@tail),
+            tail =&gt; $class-&gt;fromArray(@tail),
         );
     }</code></pre>
 
@@ -180,9 +198,9 @@
 
 <p>In languages like Scheme and Haskell, which are built around recursive data structures, the compilers will naturally do Tail Call Elimination. This means that if the last action in a routine is to call another method (often, but not always, the current method) then you can simply jump to that method, without having to add the overhead of storing the call on the stack.</p>
 
-<p>Though Perl can't do this automatically, there are two modules on CPAN by Yuval Koogman that will allow you to handle this elegantly, <code>Sub::Call::Tail</code> and <code>Sub::Call::Recur</code>. The latter is faster, but only handles function calls that recurse into itself. The former can handle tail calls to any subroutine, and also object methods, so we'll use that.</p>
+<p>Though Perl can't (yet?) do this kind of optimization automatically, there are two modules on CPAN by Yuval Koogman that will allow you to handle this elegantly, <code>Sub::Call::Tail</code> and <code>Sub::Call::Recur</code>. The latter is faster, but only handles function calls that recurse into itself. The former can handle tail calls to any subroutine, and also object methods, so we'll use that.</p>
 
-<p>By default, <code>Sub::Call::Tail</code> exports a function called <code>tail</code>... which could confuse both the reader and <code>perl</code>. We'll use the ability to import an aliased function, and call it <code>tail_call</code> instead, which makes it much clearer!</p>
+<p>By default, <code>Sub::Call::Tail</code> exports a function called <code>tail</code>. As our List class already has a method <code>tail</code> (meaning something quite different), this could confuse both the reader and <code>perl</code> itself. So we'll take advantage of the facility to import an aliased function, and call it <code>tail_call</code> instead, which makes it much clearer!</p>
 
 <pre><code> # the slightly nicer &#39;use&#39; line is implemented in 
  # https://github.com/osfameron/sub-call-tail release pending ;-)
@@ -198,7 +216,9 @@
         );
     }</code></pre>
 
-<p>There are similar workarounds available for Python, Ruby, and Javascript. They will usually use a <code>goto</code> statement in some form, perhaps a structured one that either jumps back to the beginning of the block. (The Perl hack is implemented with a <code>goto &function</code> call, which, though it shares the same name as the reviled control-flow operation, actually does something slightly cleaner, simply replacing the currently running subroutine with the new one.)</p>
+<p>There are similar workarounds available for Python, Ruby, and Javascript. They will usually use a <code>goto</code> statement in some form, perhaps a structured one that either jumps back to the beginning of the block.</p>
+
+<p>(Interestingly, though the Perl hack in <code>Sub::Call::Tail</code> is implemented with a <code>goto &function</code> call, which shares the same name as the reviled control-flow operation, it's substantially cleaner than you might fear. This type of <code>goto</code> simply replaces the currently running subroutine with a new one, a little like Unix's <code>exec</code> switches to a new process.)</p>
 
 <h3>Getting data out of a list - indexing into the list</h3>
 
@@ -237,6 +257,8 @@
 <p>Notice how we've specified all the valid ways to call this method. If we call <code>$list-&gt;nth("foo")</code> or <code>$list-&gt;nth(-1)</code> then Moose will throw an error for us automatically!</p>
 
 <h3>Transformations on lists</h3>
+
+<p>Every standard library for manipulating lists should come with a number of basic transformations, for mapping all the values with a function, filtering them according to some criteria, or reducing the collection to a single value. We'll look at each of these in turn.</p>
 
 <h4>Applying a function to a list: <code>map</code></h4>
 
@@ -351,7 +373,7 @@
 
 </ul>
 
-<p>The best general tutorial to these methods using a dynamic programming language may well be Mark Jason Dominus's <i>Higher Order Perl</i>, now freely available online at http://hop.perl.plover.com/</p>
+<p>The best general tutorial to these methods using a dynamic programming language may well be Mark Jason Dominus's <i>Higher Order Perl</i>, now freely available online at http://hop.perl.plover.com/ (though it's worth buying, whatever your programming language of choice).</p>
 
 <p>We'll just briefly look at an example of each technique.</p>
 
