@@ -457,7 +457,7 @@ or as
 
     (((1 + 2) + 3) + 4) + 5 <-- a left fold
 
-
+# NB: mention Foldable
 
 =head2 Modifying the list (inserting, deleting, editing)
 
