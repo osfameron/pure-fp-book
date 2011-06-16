@@ -1,0 +1,396 @@
+<html>
+<body>
+<link rel='stylesheet' href='style.css' type='text/css'>
+
+<h1>Lists</h1>
+
+<h2>Overview plan</h2>
+
+<pre><code>    - Singly-linked lists
+        - some characteristics
+        - how they are formed
+        - basic implementation (in Perl)
+    - Indexing into a list
+    - Interlude: Tail recursion, TCE
+    - List operations
+        - map / fmap
+        - filter
+        - fold
+    - Modifying, inserting, deleting list elements
+        - mutable versus immutable
+        - compare with a mutable Vector (such as Perl&#39;s arrays)
+    - Copying lists
+        - how to deep copy an immutable data-structure ;-)
+        - caching Empty (MooseX::Singleton)
+        - caching generally (Memoize?)
+    - Infinite lists
+        - laziness
+        - implementation
+    - Doubly-linked lists?
+        - mutable... immutable?
+        - pointers
+        - code
+        - rewrite with Data::Zipper
+
+    - Exercise: implement a turing machine with a zipper onto an infinite
+        (in both directions) list
+
+    - Show me the Code!: implementations of the above concepts
+      (or, if available, usages of equivalent, available library functions)
+        - Modern Perl with Moose
+        - Javascript
+        - Ruby
+        - Python</code></pre>
+
+<h2>Linked lists</h2>
+
+<p>The linked list is one of the oldest data structures in computing, dating back to the mid-1950s. While it's a collection type, similar to an Array, it makes very different tradeoffs.</p>
+
+<p>In a dynamic programming language like Perl, Ruby, Python, of Javascript, we very rarely feel the need to look beyond the builtin array types, as they are usually Good Enough. However, the linked list <i>is</i> a fundamental building block, and we'll see that it is key for understanding concepts such as:</p>
+
+<ul>
+
+<li>recursive thinking
+
+<li>data-sharing
+
+<li>persistent data structures
+
+</ul>
+
+<p>Beyond this, linked lists do have some features that arrays don't</p>
+
+<ul>
+
+<li>handling circular data
+
+<li>infinite lists and streams
+
+<li>possibility for automatic parallelisation
+
+</ul>
+
+<p>A linked list is a structure that contains an element (often called the <code>head</code>) and a pointer to the rest of the list (the <code>tail</code>).</p>
+
+<p>For example, the word <code>"hello"</code> is made up of the list of characters:</p>
+
+<pre><code>    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o ]
+     ^    ^
+   head   tail</code></pre>
+
+<p>The head is the letter <code>"h"</code>, and the tail is the list</p>
+
+<pre><code>    [e.]-&gt;[l.]-&gt;[l.]-&gt;[o ]</code></pre>
+
+<p>So we've seen lists of 4 and 5 elements. You could grow the list arbitrarily large, by continuing to add links to new elements.</p>
+
+<p>How about smaller lists?</p>
+
+<pre><code>    1 element:   [o ]
+    0 elements:  ()</code></pre>
+
+<p>The 0-element list doesn't have a head or a tail. It's just an empty list, which is a different case to what we've seen. But how about the 1-element list? It has a <code>head</code>, but does it have a <code>tail</code>?</p>
+
+<p>Well, we saw that the tail of the list <code>"hello"</code> was the list <code>"ello"</code>. So the tail of <code>"o"</code> should be the list <code>""</code>, i.e. the empty list.</p>
+
+<p>This means that really our lists look like:</p>
+
+<pre><code>    [o.]-&gt;()
+
+    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()</code></pre>
+
+<p>So a list can be one of two things:</p>
+
+<pre><code>    ()      an empty list
+    [x.]-&gt;  a linking cell the connects a value to another list
+            (where the other list is either another linking cell
+            or an empty list)</code></pre>
+
+<h2>Implementation</h2>
+
+<p>Let's have a look now at how we could represent this in code. As usual, we'll look at examples in Modern Perl. We'll add code and explanations in Ruby, Python, and JavaScript at the end of the chapter.</p>
+
+<p>We <i>could</i> represent the two cases as</p>
+
+<pre><code>    []              an empty array
+    [$head, $tail]  an array representing a tuple of head and tail</code></pre>
+
+<p>However, in this book we'll use objects declared using <code>Moose</code> wherever we can. This will give more straight-forward code, as well as having a lot of power that we'll need when we go on to more complex scenarios.</p>
+
+<p>Note that all of the code examples are implemented and tested at <code>https://github.com/osfameron/pure-fp-book/tree/master/code</code>, so you can easily check how things hang together. If there's no implementation in your language, then please fork the code on github and contribute!</p>
+
+<pre><code>    use MooseX::Declare;
+    BEGIN { role_type &#39;List&#39; }
+
+    role List {
+        requires &#39;head&#39;;
+        requires &#39;tail&#39;;
+    }
+
+    class List::Link with List {
+        has head =&gt; ( is =&gt; &#39;ro&#39;, isa =&gt; &#39;Any&#39; );
+        has tail =&gt; ( is =&gt; &#39;ro&#39;, isa =&gt; &#39;List&#39; ),
+    }
+
+    class List::Empty with List {
+        method head { die &quot;Can&#39;t take head of empty list!&quot; }
+        method tail { die &quot;Can&#39;t take tail of empty list!&quot; }
+    }</code></pre>
+
+<p>With this code, we could already create a list, but it'd be a little verbose:</p>
+
+<pre><code>    my $list = List::Link-&gt;new(
+        head =&gt; &#39;h&#39;,
+        tail =&gt; List::Link-&gt;new(
+            head =&gt; &#39;e&#39;,
+            tail =&gt; List::Link-&gt;new(...</code></pre>
+
+<p>So let's add a little sugar. If the array is empty, we return an empty list. Otherwise we create a link from the first element of the array to the rest of the list. Typically in Perl we might use a condition like <code>if</code> to code these two cases. But in both Functional and Object Oriented programming, it's often much more elegant to use pattern matching (of which "multiple dispatch" is a variant.) <code>Moose</code> provides a rather nice and flexible way of declaring these, and we'll take advantage of it.</p>
+
+<pre><code>    use MooseX::MultiMethods;
+
+    # can be called as a class method
+    multi method fromArray ($self:) {
+        return List::Empty-&gt;new;
+    }
+    multi method fromArray ($self: $head, @tail) {
+        tail_call List::Link-&gt;new(
+            head =&gt; $head,
+            tail =&gt; $self-&gt;fromArray(@tail),
+        );
+    }</code></pre>
+
+<h3>Tail calls and recursion limits</h3>
+
+<p>In the method <code>fromArray</code> above, we recurse back into the same method until we've converted all the elements of the array into a List. Every time we do this, we are making a new method call, which is added to the call stack. This requires storing information about the caller, and to support these very dynamic languages, may require quite a <i>lot</i> of information... And finally, once we get to the base case, and are ready to return the result, the interpreter will then have to hop back through the stack, one level at a time, till it gets back to the top, passing the result information up all the way to the top.</p>
+
+<p>If we make many of these recursive calls, then the interpreter may start to complain about what we're doing. For example, in Perl:</p>
+
+<pre><code>    Deep recursion on subroutine &quot;List::fromArray&quot; at foo.pl line 20</code></pre>
+
+<p>There are ways to eliminate these warnings</p>
+
+<pre><code>    no warnings &#39;recursion&#39;;
+    $DB::deep = 100_000_000; # some big number, greater than maximum number of
+                             # recursions</code></pre>
+
+<p>But that would only be papering over the synptoms, the root problem would remain: we may blow all the memory allocated to the call stack, and the interpreter may crash.</p>
+
+<p>In languages like Scheme and Haskell, which are built around recursive data structures, the compilers will naturally do Tail Call Elimination. This means that if the last action in a routine is to call another method (often, but not always, the current method) then you can simply jump to that method, without having to add the overhead of storing the call on the stack.</p>
+
+<p>Though Perl can't do this automatically, there are two modules on CPAN by Yuval Koogman that will allow you to handle this elegantly, <code>Sub::Call::Tail</code> and <code>Sub::Call::Recur</code>. The latter is faster, but only handles function calls that recurse into itself. The former can handle tail calls to any subroutine, and also object methods, so we'll use that.</p>
+
+<p>By default, <code>Sub::Call::Tail</code> exports a function called <code>tail</code>... which could confuse both the reader and <code>perl</code>. We'll use the ability to import an aliased function, and call it <code>tail_call</code> instead, which makes it much clearer!</p>
+
+<pre><code> # the slightly nicer &#39;use&#39; line is implemented in 
+ # https://github.com/osfameron/sub-call-tail release pending ;-)
+
+    # take that, recursion!
+    use Sub::Import &#39;Sub::Call::Tail&#39; tail =&gt; { -as =&gt; &#39;tail_call&#39; };
+    # use Sub::Call::Tail tail =&gt; { -as =&gt; &#39;tail_call&#39;};
+
+    multi method fromArray ($self: $head, @tail) {
+        tail_call List::Link-&gt;new(
+            head =&gt; $head,
+            tail =&gt; $self-&gt;fromArray(@tail),
+        );
+    }</code></pre>
+
+<p>There are similar workarounds available for Python, Ruby, and Javascript. They will usually use a <code>goto</code> statement in some form, perhaps a structured one that either jumps back to the beginning of the block. (The Perl hack is implemented with a <code>goto &function</code> call, which, though it shares the same name as the reviled control-flow operation, actually does something slightly cleaner, simply replacing the currently running subroutine with the new one.)</p>
+
+<h3>Getting data out of a list</h3>
+
+<h4>Converting back to array</h4>
+
+<p>It may sometimes be convenient to flatten our List structure back to a native array. We could do this again with recursion.</p>
+
+<pre><code>    multi method toArray_recursive (List::Empty $self:) { 
+        return ()
+    }
+    multi method toArray_recursive (List::Link $self:) {
+        return ($self-&gt;head, $self-&gt;tail-&gt;toArray_recursive);
+    }</code></pre>
+
+<p>But notice how we don't have a convenient function to make a tail call on. The <code>toArray</code> method is called, but as <i>part</i> of the expression only. In general, there are two ways to handle this:</p>
+
+<ul>
+
+<li>convert the function into a tail-recursive one, by extracting out the stack</li>
+
+<li>convert the function into an iterative one, that manages its own stack</li>
+
+</ul>
+
+<p>The best general tutorial to these methods using a dynamic programming language may well be Mark Jason Dominus's <i>Higher Order Perl</i>, now freely available online at http://hop.perl.plover.com/</p>
+
+<p>We'll just briefly look at an example of each technique.</p>
+
+<h5>converting the function into a tail-recursive one</h5>
+
+<p>We'll need to extract the returned <code>@array</code> and instead pass it onwards within the tail call.</p>
+
+<pre><code>    multi method toArray_stack (List::Empty $self: @stack) {
+        return @stack;
+    }
+    multi method toArray_stack (List::Link $self: @stack) {
+        tail_call $self-&gt;tail-&gt;toArray_stack(@stack, $self-&gt;head);
+    }</code></pre>
+
+<h5>converting the function into an iterative one</h5>
+
+<p>Here we will entirely eschew the idea of making a recursive function call, and instead loop through the list using a classic imperative programming statement, the <code>while</code> loop. We'll also manage our own stack, as a variable <code>@stack</code>.</p>
+
+<pre><code>    method toArray_iterative () {
+        my @stack;
+        my $list = $self;
+        while ($list-&gt;isa(&#39;List::Link&#39;)) {
+            push @stack, $list-&gt;head;
+            $list = $list-&gt;tail;
+        }
+        return @stack;
+    }</code></pre>
+
+<h4>Indexing into the list</h4>
+
+<p>While arrays and lists both store collections of data, the representations make certain tasks easier or more difficult. Accessing an item positionally, for example, is trivial with an array:</p>
+
+<pre><code>     0  1  2  3  4 
+    [h][e][l][l][o]
+
+    To access item number 3, find the beginning of the array, and get the 
+    contents of the box 3 positions to the right.</code></pre>
+
+<p>With a list, on the other hand, we don't have an easy way to jump to another element, as each cell is stored in a different location in memory.</p>
+
+<pre><code>    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()</code></pre>
+
+<p>Instead we need to visit each cell in turn until we arrive at the right <code>head</code> element.</p>
+
+<p>Obviously, we can't index into an Empty list:</p>
+
+<pre><code>    multi method nth (List::Empty $self: Int $pos) { 
+        die &quot;Can&#39;t index into an Empty list&quot;; 
+    }</code></pre>
+
+<p>And if we want the zero-th element of a list, then we're just looking for its head.</p>
+
+<pre><code>    multi method nth (Int $pos where { $_ == 0 }) {
+        return $self-&gt;head;
+    }</code></pre>
+
+<p>But if we've passed a positive integer, then we can simply recurse down the tail, looking for the <code>nth</code> of the next lowest integer, until we get to 0.</p>
+
+<pre><code>    multi method nth (Int $pos where { $_ &gt; 0 }) {
+        tail_call $self-&gt;tail-&gt;nth( $pos - 1 );
+    }</code></pre>
+
+<p>Notice how we've specified all the valid ways to call this method. If we call <code>$list-&gt;nth("foo")</code> or <code>$list-&gt;nth(-1)</code> then Moose will throw an error for us automatically!</p>
+
+<p>As with the fromArray method, this kind of recursive code is very elegant, but there is a teensy little problem: dynamic languages were never designed for this kind of code structure, and that means that, by default, they do have a few little hiccups that we need to be aware of.</p>
+
+<h3>Transformations on lists</h3>
+
+<h4>Applying a function to a list: <code>map</code></h4>
+
+<p>We often want to apply a function to all elements of a collection. For example, we may have a list of user records, and we want a list of full names.</p>
+
+<p>The dynamic languages, for the most part, have already borrowed this functionality from the world of Functional Programming, and often call it <code>map</code>.</p>
+
+<pre><code>    my @users = (
+        {
+            first_name =&gt; &#39;Bob&#39;,
+            last_name  =&gt; &#39;Smith&#39;,
+        },
+        {
+            first_name =&gt; &#39;Aisha&#39;,
+            last_name  =&gt; &#39;Chaudhury&#39;,
+        }
+    );
+
+    use signatures;
+    sub full_name ($user) {
+        return join &#39; &#39; =&gt; 
+            $user-&gt;{first_name},
+            $user-&gt;{last_name};
+    }
+
+    my @full_names = map full_name($_), @users;</code></pre>
+
+<p>To define map for a linked list, we of course define it recursively!</p>
+
+<pre><code>    multi method map (List::Empty $self: CodeRef $f) { 
+        return $self;
+    }
+    multi method map (List::Link $self: CodeRef $f) {
+        tail_call $self-&gt;new( 
+            head =&gt; $f-&gt;($self-&gt;head),
+            tail =&gt; $self-&gt;tail-&gt;map( $f )
+        );
+    }</code></pre>
+
+<p>and later:</p>
+
+<pre><code>    my $users = List-&gt;fromArray(@users);
+
+    my $names = $users-&gt;map( \&amp;full_name );</code></pre>
+
+<h5>Functors</h5>
+
+<p>Note how we started with a function that operated on a single value:</p>
+
+<pre><code>    full_name :: { first_name, last_name } -&gt; &quot;Full name&quot;</code></pre>
+
+<p>And we've ended with one that operates on whole collections:</p>
+
+<pre><code>    map(full_name) :: [List of {...}] -&gt; [List of &quot;Full name&quot;]</code></pre>
+
+<p>Often, in the world of FP, we'll call this kind of operation a Functor. You'll often see the operation that we just defined as <code>map</code> called <code>fmap</code> instead (i.e. Functor Map). Converting a function that operates on a single value to one that operates on a collection (or any other type of container) is called <i>lifting</i> the function.</p>
+
+<h4><code>filter</code>ing the list</h4>
+
+<p>Another key operation on any collection type is to filter them by some criteria. All the dynamic languages offer this facility for their native types, usually calling them <code>grep</code> or <code>filter</code>, or in some cases using a more general facility called List Comprehensions. We'll implement the simple filter case, again recursively.</p>
+
+<pre><code>    multi method filter (List::Empty $self: CodeRef $f) { 
+        return $self;
+    }
+    multi method filter (List::Link $self: CodeRef $f) {
+        my $head = $self-&gt;head;
+        if ($f-&gt;($head)) {
+            tail_call $self-&gt;new( 
+                head =&gt; $head,
+                tail =&gt; $self-&gt;tail-&gt;filter( $f ),
+            );
+        }
+        else {
+            tail_call $self-&gt;tail-&gt;filter( $f );
+        }
+    }</code></pre>
+
+<h4><code>fold</code></h4>
+
+<p>Folds are the result of repeatedly applying an operation to every pair of values in a List until you get a single value. An example could finding the sum of a list of numbers.</p>
+
+<pre><code>    sum (1,2,3,4,5) = 1 + 2 + 3 + 4 + 5</code></pre>
+
+<p>We could think of the sum as:</p>
+
+<pre><code>    1 + (2 + (3 + (4 + 5))) &lt;-- a right fold</code></pre>
+
+<p>or as</p>
+
+<pre><code>    (((1 + 2) + 3) + 4) + 5 &lt;-- a left fold</code></pre>
+
+<h3>Modifying the list (inserting, deleting, editing)</h3>
+
+<h3>Compare to a mutable list TODO</h3>
+
+<p>Let's compare this with an array:</p>
+
+<pre><code>     0  1  2  3  4 
+    [h][e][l][l][o]</code></pre>
+
+<p>The array has 5 slots, stored next to each other in memory. This means that we can immediately access any of them in any order. However, if we want to add a new element, we'd have to resize the array. We'll have a look at this in more detail later.</p>
+
+</body>
+</html>
+

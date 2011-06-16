@@ -1,2 +1,2 @@
 !.gitignore
-*.html
+# *.html # gh-pages does show this!
