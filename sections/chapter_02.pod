@@ -251,7 +251,7 @@ having to add the overhead of storing the call on the stack.
 Though Perl can't (yet?) do this kind of optimization automatically, there are
 two modules on CPAN by Yuval Koogman that will allow you to handle this
 elegantly, C<Sub::Call::Tail> and C<Sub::Call::Recur>.  The latter is faster,
-but only handles function calls that recurse into itself.  The former can
+but only handles function calls that recurse into themselves.  The former can
 handle tail calls to any subroutine, and also object methods, so we'll use
 that.
 
