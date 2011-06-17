@@ -198,7 +198,7 @@
 
 <p>In languages like Scheme and Haskell, which are built around recursive data structures, the compilers will naturally do Tail Call Elimination. This means that if the last action in a routine is to call another method (often, but not always, the current method) then you can simply jump to that method, without having to add the overhead of storing the call on the stack.</p>
 
-<p>Though Perl can't (yet?) do this kind of optimization automatically, there are two modules on CPAN by Yuval Koogman that will allow you to handle this elegantly, <code>Sub::Call::Tail</code> and <code>Sub::Call::Recur</code>. The latter is faster, but only handles function calls that recurse into itself. The former can handle tail calls to any subroutine, and also object methods, so we'll use that.</p>
+<p>Though Perl can't (yet?) do this kind of optimization automatically, there are two modules on CPAN by Yuval Koogman that will allow you to handle this elegantly, <code>Sub::Call::Tail</code> and <code>Sub::Call::Recur</code>. The latter is faster, but only handles function calls that recurse into themselves. The former can handle tail calls to any subroutine, and also object methods, so we'll use that.</p>
 
 <p>By default, <code>Sub::Call::Tail</code> exports a function called <code>tail</code>. As our List class already has a method <code>tail</code> (meaning something quite different), this could confuse both the reader and <code>perl</code> itself. So we'll take advantage of the facility to import an aliased function, and call it <code>tail_call</code> instead, which makes it much clearer!</p>
 
