@@ -107,6 +107,19 @@ role List {
         }
     }
 
+    multi method filter_no_if (List::Empty $self: CodeRef $f) { 
+        return $self;
+    }
+    multi method filter_no_if (List::Link $self: CodeRef $f where { $_->($self->head) }) {
+        tail_call $self->new( 
+            head => $self->head,
+            tail => $self->tail->filter( $f ),
+        );
+    }
+    multi method filter_no_if (List::Link $self: CodeRef $f) {
+        tail_call $self->tail->filter( $f );
+    }
+
     multi method foldl (List::Empty $self: CodeRef $f, $acc) {
         return $acc;
     }
