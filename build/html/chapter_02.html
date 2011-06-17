@@ -336,9 +336,17 @@
         }
     }</code></pre>
 
+<p>So, we could now write</p>
+
+<pre><code>    # TODO TEST
+    use signatures;
+    my $odd_numbers = List-&gt;fromArray(1..100)-&gt;filter(
+        sub ($n) { $n % 2 }
+    );</code></pre>
+
 <h4><code>fold</code></h4>
 
-<p>Folds are the result of repeatedly applying an operation to every pair of values in a List until you get a single value. An example could finding the sum of a list of numbers.</p>
+<p>Folds are the result of repeatedly applying an operation to every pair of values in a List until you get a single value. An example could be finding the sum of a list of numbers.</p>
 
 <pre><code>    sum (1,2,3,4,5) = 1 + 2 + 3 + 4 + 5</code></pre>
 
@@ -350,7 +358,34 @@
 
 <pre><code>    (((1 + 2) + 3) + 4) + 5 &lt;-- a left fold</code></pre>
 
-<p># NB: mention Foldable</p>
+<p>Oddly, these two folds, <code>foldr</code> and <code>foldl</code> have rather different characteristics: sometimes one will be faster, or will never complete.</p>
+
+<p>With all these recursive algorithms, we have to consider the "base case", which for lists means "what happens with an empty list?" The typical way to do this is to also include a parameter which is an <i>identity</i> value. For a <code>sum</code> operation, this would be <code>0</code>.</p>
+
+<pre><code>    sub add ($x,$y) { $x + $y },
+    sub sum ($nums) {
+        return $nums-&gt;fold( \&amp;add, 0 );
+    }</code></pre>
+
+<p>Whereas for a multiplicative <code>product</code> it would be <code>1</code></p>
+
+<pre><code>    sub multiply ($x,$y) { $x * $y },
+    sub product ($nums) {
+        return $nums-&gt;fold( \&amp;multiply, 1 );
+    }</code></pre>
+
+<p>Though in both these cases, the fold's input and output are the same type of value, folds allow the result to be a different type entirely. In general, we call the result an <i>accumulator</i>, as it accumulates the folder data as we progress through the list.</p>
+
+<p>Let's have a look at the left-fold first.</p>
+
+<pre><code>    multi method foldl (List::Empty $self: CodeRef $f, $acc) {
+        return $acc;
+    }
+    multi method foldl (List::Link $self: CodeRef $f, $acc) {
+        tail_call $self-&gt;tail-&gt;foldl($f, $f-&gt;($self-&gt;head, $acc));
+    }</code></pre>
+
+<p># TODO case where we have an accumulator, rather than a typical binop</p>
 
 <h3>Converting back to array</h3>
 
