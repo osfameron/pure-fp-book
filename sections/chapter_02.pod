@@ -423,10 +423,18 @@ again recursively.
         }
     }
 
+So, we could now write
+
+    # TODO TEST
+    use signatures;
+    my $odd_numbers = List->fromArray(1..100)->filter(
+        sub ($n) { $n % 2 }
+    );
+
 =head3 C<fold>
 
 Folds are the result of repeatedly applying an operation to every pair of
-values in a List until you get a single value.  An example could finding the
+values in a List until you get a single value.  An example could be finding the
 sum of a list of numbers.
 
     sum (1,2,3,4,5) = 1 + 2 + 3 + 4 + 5
@@ -439,7 +447,43 @@ or as
 
     (((1 + 2) + 3) + 4) + 5 <-- a left fold
 
-# NB: mention Foldable
+Oddly, these two folds, C<foldr> and C<foldl> have rather different
+characteristics: sometimes one will be faster, or will never complete.
+
+With all these recursive algorithms, we have to consider the "base case",
+which for lists means "what happens with an empty list?"  The typical way
+to do this is to also include a parameter which is an I<identity> value.
+For a C<sum> operation, this would be C<0>.
+
+    sub add ($x,$y) { $x + $y },
+    sub sum ($nums) {
+        return $nums->fold( \&add, 0 );
+    }
+
+Whereas for a multiplicative C<product> it would be C<1>
+
+    sub multiply ($x,$y) { $x * $y },
+    sub product ($nums) {
+        return $nums->fold( \&multiply, 1 );
+    }
+
+Though in both these cases, the fold's input and output are the same type of
+value, folds allow the result to be a different type entirely.  In general, we
+call the result an I<accumulator>, as it accumulates the folder data as we
+progress through the list.
+
+Let's have a look at the left-fold first.
+
+    multi method foldl (List::Empty $self: CodeRef $f, $acc) {
+        return $acc;
+    }
+    multi method foldl (List::Link $self: CodeRef $f, $acc) {
+        tail_call $self->tail->foldl($f, $f->($self->head, $acc));
+    }
+
+
+# TODO case where we have an accumulator, rather than a typical binop
+
 
 =head2 Converting back to array
 
