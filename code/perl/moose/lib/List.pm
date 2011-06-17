@@ -7,9 +7,19 @@ role List {
     use MooseX::MultiMethods;
     use Moose::Util::TypeConstraints;
     use Data::Thunk;
+    use signatures;
 
     requires 'head';
     requires 'tail';
+
+    # doesn't seem to export?
+    use Sub::Exporter -setup => { exports => [qw/ cons /] };
+    sub cons ($head, $tail) {
+        return List::Link->new(
+            head => $head,
+            tail => $tail // List::Empty->new,
+        );
+    }
 
     # can be called as a class method
     multi method fromArray ($self:) {
