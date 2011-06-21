@@ -148,6 +148,16 @@ role List {
             lazy_object { $self->tail->foldr($f, $acc) }, class=>'List::Link',
         );
     }
+
+    multi method foldr_no_lazy (List::Empty $self: CodeRef $f, $acc) {
+        return $acc;
+    }
+    multi method foldr_no_lazy (List::Link $self: CodeRef $f, $acc) {
+        tail_call $f->(
+            $self->head, 
+            $self->tail->foldr_no_lazy($f, $acc),
+        );
+    }
 }
 
 class List::Link with List {
