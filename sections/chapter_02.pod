@@ -235,8 +235,8 @@ complain about what we're doing.  For example, in Perl:
 There are ways to eliminate these warnings
 
     no warnings 'recursion';
-    $DB::deep = 100_000_000; # some big number, greater than maximum number of
-                             # recursions
+    $DB::deep = 100_000_000; # some big number, greater than maximum 
+                             # number of recursions
 
 But that would only be papering over the synptoms, the root problem would
 remain: we may blow all the memory allocated to the call stack, and the
