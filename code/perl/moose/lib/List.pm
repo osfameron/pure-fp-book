@@ -107,6 +107,11 @@ role List {
         }
     }
 
+=begin doesnt' work
+
+# at that time, $self is still MooseX::Method::Signatures::Meta::Method
+# rather than the $self in the signature
+
     multi method filter_no_if (List::Empty $self: CodeRef $f) { 
         return $self;
     }
@@ -119,6 +124,9 @@ role List {
     multi method filter_no_if (List::Link $self: CodeRef $f) {
         tail_call $self->tail->filter( $f );
     }
+
+=end
+=cut
 
     multi method foldl (List::Empty $self: CodeRef $f, $acc) {
         return $acc;

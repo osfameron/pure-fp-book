@@ -52,7 +52,6 @@ is $names->nth(0), 'Bob Smith',       'map ok';
 is $names->nth(1), 'Aisha Chaudhury', 'map ok';
 
 my $filtered = $list->filter( sub { (shift) % 2 });
-
 is $filtered->head,   11, 'odd filter';
 is $filtered->nth(1), 13, 'odd filter';
 
