@@ -52,7 +52,6 @@ is $names->nth(0), 'Bob Smith',       'map ok';
 is $names->nth(1), 'Aisha Chaudhury', 'map ok';
 
 my $filtered = $list->filter( sub { (shift) % 2 });
-
 is $filtered->head,   11, 'odd filter';
 is $filtered->nth(1), 13, 'odd filter';
 
@@ -63,6 +62,7 @@ is $e1, $e2, 'List::Empty is a singleton';
 sub add ($x,$y) { $x + $y }
 is $list->foldl( \&add, 0 ), 165, 'foldl';
 is $list->foldr( \&add, 0 ), 165, 'foldr';
+is $list->foldr_no_lazy( \&add, 0 ), 165, 'foldr_no_lazy';
 
 # the following works if tail typeconstraint is relaxed,
 # but laziness plays badly with typeconstraints for now
