@@ -191,8 +191,8 @@
 <p>There are ways to eliminate these warnings</p>
 
 <pre><code>    no warnings &#39;recursion&#39;;
-    $DB::deep = 100_000_000; # some big number, greater than maximum number of
-                             # recursions</code></pre>
+    $DB::deep = 100_000_000; # some big number, greater than maximum 
+                             # number of recursions</code></pre>
 
 <p>But that would only be papering over the synptoms, the root problem would remain: we may blow all the memory allocated to the call stack, and the interpreter may crash.</p>
 
@@ -481,16 +481,129 @@
 
 <p>Later, when we look at infinite lazy lists, we'll come back to another little tweak that languages like Haskell use to optimize right folds.</p>
 
-<h3>Modifying the list (inserting, deleting, editing)</h3>
+<h3>Modifying the list (editing, inserting, deleting)</h3>
 
-<h4>Compare to a mutable list TODO</h4>
+<h4>How is a list different to an array</h4>
 
-<p>Let's compare this with an array:</p>
+<p>We noted earlier that an array was represented as a contiguous area of memory while a list is a series of nodes that point to each other</p>
 
-<pre><code>     0  1  2  3  4 
-    [h][e][l][l][o]</code></pre>
+<pre><code>    ARRAY:
+     0  1  2  3  4 
+    [h][e][l][l][o]
 
-<p>The array has 5 slots, stored next to each other in memory. This means that we can immediately access any of them in any order. However, if we want to add a new element, we'd have to resize the array. We'll have a look at this in more detail later.</p>
+    LIST
+    0     1     2     3     4     5
+    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()</code></pre>
+
+<p>We saw above that the code to access the <code>nth</code> element of a list was rather more complicated than for an array. Similarly, other operations are more (or less) complicated.</p>
+
+<p>If we want to change our list to <code>"hullo"</code> instead, then this is easy with an array.</p>
+
+<pre><code>    $array[1] = &quot;u&quot;;
+
+    ARRAY is now:
+    [h][u][l][l][o]</code></pre>
+
+<p>Of course we've now "lost" the original representation of "hello", because the contents of that array have been entirely written over. Now, we might want to do the same thing with a list</p>
+
+<pre><code>    $list-&gt;mutateAt(1, &#39;u&#39;);
+
+    LIST
+    0     1     2     3     4     5
+    [h.]-&gt;[u.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+           ^
+           changed in-place</code></pre>
+
+<p>And of course we'd do it recursively:</p>
+
+<pre><code>    # NOT TESTED
+    multi method mutateAt (List::Empty $self: Int $pos, $new) { 
+        die &quot;Can&#39;t mutate an Empty list&quot;; 
+    }
+    multi method mutateAt (Int $pos where { $_ == 0 }, $new) {
+        $self-&gt;head($new);
+    }
+    multi method mutateAt (Int $pos where { $_ &gt; 0 }, $new) {
+        tail_call $self-&gt;tail-&gt;mutateAt($pos - 1, $new);
+    }</code></pre>
+
+<p>However, that would be a <i>mutation</i> of a value, and in this book, we're mostly interested in <i>immutable</i>, pure data structures. Note that we even declared our attributes with read-only (<code>'ro'</code>) accessors.</p>
+
+<pre><code>    class List::Link with List {
+        has head =&gt; ( is =&gt; &#39;ro&#39;, isa =&gt; &#39;Any&#39; );
+        has tail =&gt; ( is =&gt; &#39;ro&#39;, isa =&gt; &#39;List&#39; ),
+    }</code></pre>
+
+<p>If we relax these to <code>'rw'</code>, we could make the <code>mutateAt</code> code work. This is how you might typically work with linked lists in a language like <code>C</code>. But of course such a list shares the disadvantage of the array mutation - that we have now lost the original <code>"hello"</code> sequence. Let's see if we can do better.</p>
+
+<p>So, we want to retain the <code>'e'</code> node, but avoid it, like so:</p>
+
+<pre><code>    LIST
+    0     1     2     3     4     5
+    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+        \     /
+          [u.]</code></pre>
+
+<p>But of course the node <code>'h'</code> can't point to two tails! So we could relink it entirely:</p>
+
+<pre><code>    LIST
+    0     1     2     3     4     5
+          [e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+              /
+    [h.]-&gt;[u.]</code></pre>
+
+<p>But now we have no way of getting at the original list at all. The solution turns out to be to <i>copy</i> everything before the element we're changing.</p>
+
+<pre><code>    LIST
+    0     1     2     3     4     5
+    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+              /
+    [h.]-&gt;[u.]</code></pre>
+
+<p>We now have <i>2</i> nodes that contain the value <code>'h'</code> in their head, but which have entirely different tails. Note, though, that they converge at <code>'l'</code>, so we only need to copy part of the list.</p>
+
+<pre><code>    # NOT TESTED
+    multi method updateAt (List::Empty $self: Int $pos, $new) { 
+        die &quot;Can&#39;t update an Empty list&quot;; 
+    }
+    multi method updateAt (Int $pos where { $_ == 0 }, $new) {
+        List::Link-&gt;new({
+            head =&gt; $new,
+            tail =&gt; $self-&gt;tail,
+        });
+    }
+    multi method updateAt (Int $pos where { $_ &gt; 0 }, $new) {
+        tail_call List::Link-&gt;new({
+            head =&gt; $self-&gt;head,
+            tail =&gt; $self-&gt;tail-&gt;updateAt($pos - 1, $new);
+        });
+    }</code></pre>
+
+<p>Once we get to position 0 we simply return a list with the modified value as its head, but the same tail as before.</p>
+
+<p>All this copying may seem inefficient. If you have to do multiple updates, then you will end up copying at least the <i>beginning</i> of the list each time. Tellingly, Haskell's <i>Prelude</i> (the standard library) missed out <code>updateAt</code> from its very rich set of functions that manipulate linked lists.</p>
+
+<p>In fact, a linked list, by default isn't the optimal structure for random access. However, we have seen that the benefit of using an immutable structure is that we get to keep the old and new versions of a structure at the same time, and with minimal memory usage, because of the sharing of data between the two structures.</p>
+
+<p>This technique of data sharing where possible (and cloning with updated values where not) will be a common tool, so it is worth getting to grips with this simple example first, so we'll look now at inserting and deleting elements from a list.</p>
+
+<p>Of course, other data structures may well be more appropriate for your task, for example:</p>
+
+<ul>
+
+<li>Array</li>
+
+<p>Yes, they're mutable, but in some cases, they will still be the appropriate structure.</p>
+
+<li>Zippers</li>
+
+<p>We'll look at these shortly - these allow us to update a list immediately, in place, in constant time. Especially useful if you will be doing multiple updates.</p>
+
+<li>Trees</li>
+
+<p>We'll look at these in detail in the next chapter</p>
+
+</ul>
 
 </body>
 </html>
