@@ -599,16 +599,158 @@ we saw above with C<toArray>
 Later, when we look at infinite lazy lists, we'll come back to another little
 tweak that languages like Haskell use to optimize right folds.
 
-=head2 Modifying the list (inserting, deleting, editing)
+=head2 Modifying the list (editing, inserting, deleting)
 
-=head3 Compare to a mutable list TODO
+=head3 How is a list different to an array
 
-Let's compare this with an array:
+We noted earlier that an array was represented as a contiguous area of memory
+while a list is a series of nodes that point to each other
 
+    ARRAY:
      0  1  2  3  4 
     [h][e][l][l][o]
 
-The array has 5 slots, stored next to each other in memory.  This means that
-we can immediately access any of them in any order.  However, if we want to 
-add a new element, we'd have to resize the array.  We'll have a look at this
-in more detail later.
+    LIST
+    0     1     2     3     4     5
+    [h.]->[e.]->[l.]->[l.]->[o.]->()
+
+We saw above that the code to access the C<nth> element of a list was rather
+more complicated than for an array.  Similarly, other operations are more
+(or less) complicated.
+
+If we want to change our list to C<"hullo"> instead, then this is easy with
+an array.
+
+    $array[1] = "u";
+
+    ARRAY is now:
+    [h][u][l][l][o]
+
+Of course we've now "lost" the original representation of "hello", because
+the contents of that array have been entirely written over.  Now, we might
+want to do the same thing with a list
+
+    $list->mutateAt(1, 'u');
+
+    LIST
+    0     1     2     3     4     5
+    [h.]->[u.]->[l.]->[l.]->[o.]->()
+           ^
+           changed in-place
+
+And of course we'd do it recursively:
+    
+    # NOT TESTED
+    multi method mutateAt (List::Empty $self: Int $pos, $new) { 
+        die "Can't mutate an Empty list"; 
+    }
+    multi method mutateAt (Int $pos where { $_ == 0 }, $new) {
+        $self->head($new);
+    }
+    multi method mutateAt (Int $pos where { $_ > 0 }, $new) {
+        tail_call $self->tail->mutateAt($pos - 1, $new);
+    }
+
+However, that would be a I<mutation> of a value, and in this book, we're mostly
+interested in I<immutable>, pure data structures.  Note that we even declared
+our attributes with read-only (C<'ro'>) accessors.  
+
+    class List::Link with List {
+        has head => ( is => 'ro', isa => 'Any' );
+        has tail => ( is => 'ro', isa => 'List' ),
+    }
+
+If we relax these to C<'rw'>, we could make the C<mutateAt> code work.  This is
+how you might typically work with linked lists in a language like C<C>.  But
+of course such a list shares the disadvantage of the array mutation - that we
+have now lost the original C<"hello"> sequence.  Let's see if we can do better.
+
+So, we want to retain the C<'e'> node, but avoid it, like so:
+
+    LIST
+    0     1     2     3     4     5
+    [h.]->[e.]->[l.]->[l.]->[o.]->()
+        \     /
+          [u.]
+
+But of course the node C<'h'> can't point to two tails!  So we could relink it
+entirely:
+
+    LIST
+    0     1     2     3     4     5
+          [e.]->[l.]->[l.]->[o.]->()
+              /
+    [h.]->[u.]
+
+But now we have no way of getting at the original list at all.  The solution 
+turns out to be to I<copy> everything before the element we're changing.
+
+    LIST
+    0     1     2     3     4     5
+    [h.]->[e.]->[l.]->[l.]->[o.]->()
+              /
+    [h.]->[u.]
+
+We now have I<2> nodes that contain the value C<'h'> in their head, but which
+have entirely different tails.  Note, though, that they converge at C<'l'>,
+so we only need to copy part of the list.
+
+    # NOT TESTED
+    multi method updateAt (List::Empty $self: Int $pos, $new) { 
+        die "Can't update an Empty list"; 
+    }
+    multi method updateAt (Int $pos where { $_ == 0 }, $new) {
+        List::Link->new({
+            head => $new,
+            tail => $self->tail,
+        });
+    }
+    multi method updateAt (Int $pos where { $_ > 0 }, $new) {
+        tail_call List::Link->new({
+            head => $self->head,
+            tail => $self->tail->updateAt($pos - 1, $new);
+        });
+    }
+
+Once we get to position 0 we simply return a list with the modified value as
+its head, but the same tail as before.
+
+All this copying may seem inefficient.  If you have to do multiple updates,
+then you will end up copying at least the I<beginning> of the list each time.
+Tellingly, Haskell's I<Prelude> (the standard library) missed out C<updateAt>
+from its very rich set of functions that manipulate linked lists.
+
+In fact, a linked list, by default isn't the optimal structure for random
+access.  However, we have seen that the benefit of using an immutable structure
+is that we get to keep the old and new versions of a structure at the same
+time, and with minimal memory usage, because of the sharing of data between the
+two structures.
+
+This technique of data sharing where possible (and cloning with updated values
+where not) will be a common tool, so it is worth getting to grips with this
+simple example first, so we'll look now at inserting and deleting elements from
+a list.
+
+Of course, other data structures may well be more appropriate for your task,
+for example:
+
+=over
+
+=item * Array
+
+Yes, they're mutable, but in some cases, they will still be the appropriate
+structure.
+
+=item * Zippers
+
+We'll look at these shortly - these allow us to update a list immediately, in
+place, in constant time.  Especially useful if you will be doing multiple
+updates.
+
+=item * Trees
+
+We'll look at these in detail in the next chapter
+
+=back
+
+=cut
