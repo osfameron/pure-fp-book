@@ -599,9 +599,7 @@ we saw above with C<toArray>
 Later, when we look at infinite lazy lists, we'll come back to another little
 tweak that languages like Haskell use to optimize right folds.
 
-=head2 Modifying the list (editing, inserting, deleting)
-
-=head3 How is a list different to an array
+=head2 Modifying the list
 
 We noted earlier that an array was represented as a contiguous area of memory
 while a list is a series of nodes that point to each other
@@ -616,7 +614,11 @@ while a list is a series of nodes that point to each other
 
 We saw above that the code to access the C<nth> element of a list was rather
 more complicated than for an array.  Similarly, other operations are more
-(or less) complicated.
+(or less) complicated.  We'll look at updating a single element, inserting a
+new one, and deletion in turn, comparing the trade-offs between an array and
+a list.
+
+=head3 Updating an element
 
 If we want to change our list to C<"hullo"> instead, then this is easy with
 an array.
@@ -753,4 +755,116 @@ We'll look at these in detail in the next chapter
 
 =back
 
-=cut
+But first, we'll look at an operation where arrays are less convenient:
+insertion of an element into a list
+
+=head3 Inserting a new element
+
+We already saw that arrays are contiguous.  We will have reserved a block of
+memory for the array, so to insert into it, we first have to copy all of the
+data to the right, and finally insert the element.  So, for example, to insert
+the missing letter into the alphabet, we'd do:
+
+    ARRAY:
+     0  1  2  3 
+    [a][b][c][e]
+
+    copy
+     0  1  2  3  4
+    [a][b][c][e][e]
+
+    update
+     0  1  2  3  4 
+    [a][b][c][d][e]
+
+That looks nice and straight-forward: but of course the array didn't have this
+extra element reserved!  In the dynamic languages what we call an I<array>
+is usually in fact a I<dynamic array> or I<vector>, which will resize itself
+behind the scenes.  So in the above example, when we try to add a new element
+to the vector, our insert algorithm must first realise that we're growing the
+array, and then allocate a new block of space (we'll double the storage space
+here, to avoid having to re-allocate too often).
+
+    ARRAY:          NEW
+     0  1  2  3     0  1  2  3  4  5  6  7
+    [a][b][c][e]   [ ][ ][ ][ ][ ][ ][ ][ ]
+
+Then we'll copy the data to the left of the insertion
+
+    ARRAY:          NEW
+     0  1  2  3     0  1  2  3  4  5  6  7
+    [a][b][c][e]   [a][b][c][ ][ ][ ][ ][ ]
+
+and to the right
+
+    ARRAY:          NEW
+     0  1  2  3     0  1  2  3  4  5  6  7
+    [a][b][c][e]   [a][b][c][ ][e][ ][ ][ ]
+
+and of course, add the inserted element.  (Now, finally, we can de-allocate the
+old array from memory).
+
+                    NEW
+                    0  1  2  3  4  5  6  7
+                   [a][b][c][d][e][ ][ ][ ]
+
+As you can see, this is quite a lot of work, and that's the reason why we 
+pre-allocated a larger range of memory than needed.  The next time we insert
+a value, we can use our first, simpler version, and only need to resize again
+once we need more than 8 elements.  Of course, this does mean that we also need to keep track of the number of items in the array:
+
+                    NEW
+                    0  1  2  3  4  5  6  7    #count
+                   [a][b][c][d][e][ ][ ][ ]    5
+
+Let's look at how we'd do that in a list:
+
+    LIST
+    0     1     2     3     4
+    [a.]->[b.]->[c.]->[e.]->()
+
+We need to re-point the link from C<c> to a new list with value C<d> that
+points to the remainder of the list C<e>.
+
+    LIST
+    0     1     2     4     5
+    [a.]->[b.]->[c.]  [e.]->()
+                  \   /
+                  [d.]
+                   3
+
+If we were using a mutable data-structure, we'd do exactly this, and just
+mutate the references to point to the right place.   With a pure, immutable
+list, we'll take advantage of sharing as before (by pointing to the C<e> list,
+which remains unchanged) but we'll also have to copy the start of the list.
+
+    LIST
+    0     1     2     3     4     5
+    [a.]->[b.]->[c.]------->[e.]->()
+                          /
+    [a.]->[b.]->[c.]->[d.]
+
+    # NOT TESTED
+    multi method insertAt (List::Empty $self: Int $pos, $new) { 
+        die "Can't insert into an Empty list"; 
+    }
+    multi method insertAt (Int $pos where { $_ == 0 }, $new) {
+        List::Link->new({
+            head => $new,
+            tail => $self,
+        });
+    }
+    multi method insertAt (Int $pos where { $_ > 0 }, $new) {
+        tail_call List::Link->new({
+            head => $self->head,
+            tail => $self->tail->insertAt($pos - 1, $new);
+        });
+    }
+
+Note how similar this is to the C<updateAt> method!  We copy the head of the
+list up until the point we want to insert, just as before.  The only difference
+is that instead of linking the list to the original position's I<tail>, we link
+to the whole list.
+
+=head3 Deleting an element
+
