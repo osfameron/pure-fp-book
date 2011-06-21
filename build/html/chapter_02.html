@@ -220,7 +220,9 @@
 
 <p>(Interestingly, though the Perl hack in <code>Sub::Call::Tail</code> is implemented with a <code>goto &function</code> call, which shares the same name as the reviled control-flow operation, it's substantially cleaner than you might fear. This type of <code>goto</code> simply replaces the currently running subroutine with a new one, a little like Unix's <code>exec</code> switches to a new process.)</p>
 
-<h3>Getting data out of a list - indexing into the list</h3>
+<h3>Getting data out of a list</h3>
+
+<h4>Indexing into the list</h4>
 
 <p>While arrays and lists both store collections of data, the representations make certain tasks easier or more difficult. Accessing an item positionally, for example, is trivial with an array:</p>
 
@@ -255,6 +257,56 @@
     }</code></pre>
 
 <p>Notice how we've specified all the valid ways to call this method. If we call <code>$list-&gt;nth("foo")</code> or <code>$list-&gt;nth(-1)</code> then Moose will throw an error for us automatically!</p>
+
+<h4>Converting back to array</h4>
+
+<p>It may sometimes be convenient to flatten our List structure back to a native array. We could do this again with recursion.</p>
+
+<pre><code>    multi method toArray_recursive (List::Empty $self:) { 
+        return ()
+    }
+    multi method toArray_recursive (List::Link $self:) {
+        return ($self-&gt;head, $self-&gt;tail-&gt;toArray_recursive);
+    }</code></pre>
+
+<p>But notice how we don't have a convenient function to make a tail call on. The <code>toArray</code> method is called, but as <i>part</i> of the expression only. In general, there are two ways to handle this:</p>
+
+<ul>
+
+<li>convert the function into a tail-recursive one, by extracting out the stack</li>
+
+<li>convert the function into an iterative one, that manages its own stack</li>
+
+</ul>
+
+<p>The best general tutorial to these methods using a dynamic programming language may well be Mark Jason Dominus's <i>Higher Order Perl</i>, now freely available online at http://hop.perl.plover.com/ (though it's worth buying, whatever your programming language of choice).</p>
+
+<p>We'll just briefly look at an example of each technique.</p>
+
+<h4>converting the function into a tail-recursive one</h4>
+
+<p>We'll need to extract the returned <code>@array</code> and instead pass it onwards within the tail call.</p>
+
+<pre><code>    multi method toArray_stack (List::Empty $self: @stack) {
+        return @stack;
+    }
+    multi method toArray_stack (List::Link $self: @stack) {
+        tail_call $self-&gt;tail-&gt;toArray_stack(@stack, $self-&gt;head);
+    }</code></pre>
+
+<h4>converting the function into an iterative one</h4>
+
+<p>Here we will entirely eschew the idea of making a recursive function call, and instead loop through the list using a classic imperative programming statement, the <code>while</code> loop. We'll also manage our own stack, as a variable <code>@stack</code>.</p>
+
+<pre><code>    method toArray_iterative () {
+        my @stack;
+        my $list = $self;
+        while ($list-&gt;isa(&#39;List::Link&#39;)) {
+            push @stack, $list-&gt;head;
+            $list = $list-&gt;tail;
+        }
+        return @stack;
+    }</code></pre>
 
 <h3>Transformations on lists</h3>
 
@@ -385,61 +437,53 @@
         tail_call $self-&gt;tail-&gt;foldl($f, $f-&gt;($self-&gt;head, $acc));
     }</code></pre>
 
-<p># TODO case where we have an accumulator, rather than a typical binop</p>
+<p>So the left fold is a typical recursive function. Note how we have to pass the accumulator to the first call - often we'd call this the <i>init</i> argument.</p>
 
-<h3>Converting back to array</h3>
+<p>While it's easy to see what the init argument should be, in many cases, you may have noticed that my original example omitted one:</p>
 
-<p>It may sometimes be convenient to flatten our List structure back to a native array. We could do this again with recursion.</p>
+<pre><code>    sum (1,2,3,4,5) = 1 + 2 + 3 + 4 + 5</code></pre>
 
-<pre><code>    multi method toArray_recursive (List::Empty $self:) { 
-        return ()
-    }
-    multi method toArray_recursive (List::Link $self:) {
-        return ($self-&gt;head, $self-&gt;tail-&gt;toArray_recursive);
+<p>In this case we can simply use the first element in the list to start things off. This obviously wouldn't work for an empty list! Often such a fold is labelled with the number <code>1</code>:</p>
+
+<pre><code>    # TODO test
+    method foldl1 (List::Link $self: CodeRef $f, $acc) {
+        return $self-&gt;tail-&gt;foldl($f, $self-&gt;head);
     }</code></pre>
 
-<p>But notice how we don't have a convenient function to make a tail call on. The <code>toArray</code> method is called, but as <i>part</i> of the expression only. In general, there are two ways to handle this:</p>
+<p>As we've specified that <code>$self</code> must be a linking list, the method will fail entirely on an empty list.</p>
+
+<p># TODO case where we have an accumulator, rather than a typical binop</p>
+
+<p>Now let's have a look at a right fold. The empty case is, of course, the same:</p>
+
+<pre><code>    multi method foldr (List::Empty $self: CodeRef $f, $acc) {
+        return $acc;
+    }</code></pre>
+
+<p>But note how, unlike <code>foldl</code>, the right fold isn't tail recursive:</p>
+
+<pre><code>    multi method foldr (List::Link $self: CodeRef $f, $acc) {
+        tail_call $f-&gt;(
+            $self-&gt;head,
+            $self-&gt;tail-&gt;foldr($f, $acc),
+        );
+    }</code></pre>
+
+<p>Though we have a tail call, it's only on the folding function <code>$f</code>. The actual call back into <code>foldr</code> isn't in the tail position, where it can be easily optimized, but rather <i>inside</i> the call to this folding function.</p>
 
 <ul>
 
-<li>convert the function into a tail-recursive one, by extracting out the stack</li>
+<li>EXERCISE:</li>
 
-<li>convert the function into an iterative one, that manages its own stack</li>
+<p>Try to optimize <code>foldr</code> by making it tail-recursive or iterative, as we saw above with <code>toArray</code></p>
 
 </ul>
 
-<p>The best general tutorial to these methods using a dynamic programming language may well be Mark Jason Dominus's <i>Higher Order Perl</i>, now freely available online at http://hop.perl.plover.com/ (though it's worth buying, whatever your programming language of choice).</p>
-
-<p>We'll just briefly look at an example of each technique.</p>
-
-<h4>converting the function into a tail-recursive one</h4>
-
-<p>We'll need to extract the returned <code>@array</code> and instead pass it onwards within the tail call.</p>
-
-<pre><code>    multi method toArray_stack (List::Empty $self: @stack) {
-        return @stack;
-    }
-    multi method toArray_stack (List::Link $self: @stack) {
-        tail_call $self-&gt;tail-&gt;toArray_stack(@stack, $self-&gt;head);
-    }</code></pre>
-
-<h4>converting the function into an iterative one</h4>
-
-<p>Here we will entirely eschew the idea of making a recursive function call, and instead loop through the list using a classic imperative programming statement, the <code>while</code> loop. We'll also manage our own stack, as a variable <code>@stack</code>.</p>
-
-<pre><code>    method toArray_iterative () {
-        my @stack;
-        my $list = $self;
-        while ($list-&gt;isa(&#39;List::Link&#39;)) {
-            push @stack, $list-&gt;head;
-            $list = $list-&gt;tail;
-        }
-        return @stack;
-    }</code></pre>
+<p>Later, when we look at infinite lazy lists, we'll come back to another little tweak that languages like Haskell use to optimize right folds.</p>
 
 <h3>Modifying the list (inserting, deleting, editing)</h3>
 
-<h3>Compare to a mutable list TODO</h3>
+<h4>Compare to a mutable list TODO</h4>
 
 <p>Let's compare this with an array:</p>
 
