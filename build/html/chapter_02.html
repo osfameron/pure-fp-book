@@ -481,9 +481,7 @@
 
 <p>Later, when we look at infinite lazy lists, we'll come back to another little tweak that languages like Haskell use to optimize right folds.</p>
 
-<h3>Modifying the list (editing, inserting, deleting)</h3>
-
-<h4>How is a list different to an array</h4>
+<h3>Modifying the list</h3>
 
 <p>We noted earlier that an array was represented as a contiguous area of memory while a list is a series of nodes that point to each other</p>
 
@@ -495,7 +493,9 @@
     0     1     2     3     4     5
     [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()</code></pre>
 
-<p>We saw above that the code to access the <code>nth</code> element of a list was rather more complicated than for an array. Similarly, other operations are more (or less) complicated.</p>
+<p>We saw above that the code to access the <code>nth</code> element of a list was rather more complicated than for an array. Similarly, other operations are more (or less) complicated. We'll look at updating a single element, inserting a new one, and deletion in turn, comparing the trade-offs between an array and a list.</p>
+
+<h4>Updating an element</h4>
 
 <p>If we want to change our list to <code>"hullo"</code> instead, then this is easy with an array.</p>
 
@@ -604,6 +604,98 @@
 <p>We'll look at these in detail in the next chapter</p>
 
 </ul>
+
+<p>But first, we'll look at an operation where arrays are less convenient: insertion of an element into a list</p>
+
+<h4>Inserting a new element</h4>
+
+<p>We already saw that arrays are contiguous. We will have reserved a block of memory for the array, so to insert into it, we first have to copy all of the data to the right, and finally insert the element. So, for example, to insert the missing letter into the alphabet, we'd do:</p>
+
+<pre><code>    ARRAY:
+     0  1  2  3 
+    [a][b][c][e]
+
+    copy
+     0  1  2  3  4
+    [a][b][c][e][e]
+
+    update
+     0  1  2  3  4 
+    [a][b][c][d][e]</code></pre>
+
+<p>That looks nice and straight-forward: but of course the array didn't have this extra element reserved! In the dynamic languages what we call an <i>array</i> is usually in fact a <i>dynamic array</i> or <i>vector</i>, which will resize itself behind the scenes. So in the above example, when we try to add a new element to the vector, our insert algorithm must first realise that we're growing the array, and then allocate a new block of space (we'll double the storage space here, to avoid having to re-allocate too often).</p>
+
+<pre><code>    ARRAY:          NEW
+     0  1  2  3     0  1  2  3  4  5  6  7
+    [a][b][c][e]   [ ][ ][ ][ ][ ][ ][ ][ ]</code></pre>
+
+<p>Then we'll copy the data to the left of the insertion</p>
+
+<pre><code>    ARRAY:          NEW
+     0  1  2  3     0  1  2  3  4  5  6  7
+    [a][b][c][e]   [a][b][c][ ][ ][ ][ ][ ]</code></pre>
+
+<p>and to the right</p>
+
+<pre><code>    ARRAY:          NEW
+     0  1  2  3     0  1  2  3  4  5  6  7
+    [a][b][c][e]   [a][b][c][ ][e][ ][ ][ ]</code></pre>
+
+<p>and of course, add the inserted element. (Now, finally, we can de-allocate the old array from memory).</p>
+
+<pre><code>                    NEW
+                    0  1  2  3  4  5  6  7
+                   [a][b][c][d][e][ ][ ][ ]</code></pre>
+
+<p>As you can see, this is quite a lot of work, and that's the reason why we pre-allocated a larger range of memory than needed. The next time we insert a value, we can use our first, simpler version, and only need to resize again once we need more than 8 elements. Of course, this does mean that we also need to keep track of the number of items in the array:</p>
+
+<pre><code>                    NEW
+                    0  1  2  3  4  5  6  7    #count
+                   [a][b][c][d][e][ ][ ][ ]    5</code></pre>
+
+<p>Let's look at how we'd do that in a list:</p>
+
+<pre><code>    LIST
+    0     1     2     3     4
+    [a.]-&gt;[b.]-&gt;[c.]-&gt;[e.]-&gt;()</code></pre>
+
+<p>We need to re-point the link from <code>c</code> to a new list with value <code>d</code> that points to the remainder of the list <code>e</code>.</p>
+
+<pre><code>    LIST
+    0     1     2     4     5
+    [a.]-&gt;[b.]-&gt;[c.]  [e.]-&gt;()
+                  \   /
+                  [d.]
+                   3</code></pre>
+
+<p>If we were using a mutable data-structure, we'd do exactly this, and just mutate the references to point to the right place. With a pure, immutable list, we'll take advantage of sharing as before (by pointing to the <code>e</code> list, which remains unchanged) but we'll also have to copy the start of the list.</p>
+
+<pre><code>    LIST
+    0     1     2     3     4     5
+    [a.]-&gt;[b.]-&gt;[c.]-------&gt;[e.]-&gt;()
+                          /
+    [a.]-&gt;[b.]-&gt;[c.]-&gt;[d.]
+
+    # NOT TESTED
+    multi method insertAt (List::Empty $self: Int $pos, $new) { 
+        die &quot;Can&#39;t insert into an Empty list&quot;; 
+    }
+    multi method insertAt (Int $pos where { $_ == 0 }, $new) {
+        List::Link-&gt;new({
+            head =&gt; $new,
+            tail =&gt; $self,
+        });
+    }
+    multi method insertAt (Int $pos where { $_ &gt; 0 }, $new) {
+        tail_call List::Link-&gt;new({
+            head =&gt; $self-&gt;head,
+            tail =&gt; $self-&gt;tail-&gt;insertAt($pos - 1, $new);
+        });
+    }</code></pre>
+
+<p>Note how similar this is to the <code>updateAt</code> method! We copy the head of the list up until the point we want to insert, just as before. The only difference is that instead of linking the list to the original position's <i>tail</i>, we link to the whole list.</p>
+
+<h4>Deleting an element</h4>
 
 </body>
 </html>
