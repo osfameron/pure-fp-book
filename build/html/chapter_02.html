@@ -548,11 +548,13 @@
 
 <pre><code>    LIST
     0     1     2     3     4     5
-          [e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
-              /
-    [h.]-&gt;[u.]</code></pre>
+    [h.] x{e.}-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+        \     /
+          [u.]</code></pre>
 
-<p>But now we have no way of getting at the original list at all. The solution turns out to be to <i>copy</i> everything before the element we're changing.</p>
+<p>But of course that means <i>mutating</i> the tail of the the list <code>'h'</code>, which we've promised we wouldn't do... immutable data-structures are <i>hard</i>!</p>
+
+<p>The trick turns out to be to <i>copy</i> everything before the element we're changing.</p>
 
 <pre><code>    LIST
     0     1     2     3     4     5
@@ -560,7 +562,7 @@
               /
     [h.]-&gt;[u.]</code></pre>
 
-<p>We now have <i>2</i> nodes that contain the value <code>'h'</code> in their head, but which have entirely different tails. Note, though, that they converge at <code>'l'</code>, so we only need to copy part of the list.</p>
+<p>We now have <i>2</i> different nodes that both contain the value <code>'h'</code> in their head, but which are in fact different lists: they have entirely different tails. Note, though, that they converge at <code>'l'</code>, so we only need to copy part of the list.</p>
 
 <pre><code>    # NOT TESTED
     multi method updateAt (List::Empty $self: Int $pos, $new) { 
@@ -579,9 +581,9 @@
         });
     }</code></pre>
 
-<p>Once we get to position 0 we simply return a list with the modified value as its head, but the same tail as before.</p>
+<p>If you think about it, this method is following the same pattern of <code>nth</code>, except that instead of just descending the list till we get to the element we want, we copy the list as we go. Then, once we get to position <code>0</code>, we link this copied part of the list with the updated element, and the rest of the list.</p>
 
-<p>All this copying may seem inefficient. If you have to do multiple updates, then you will end up copying at least the <i>beginning</i> of the list each time. Tellingly, Haskell's <i>Prelude</i> (the standard library) missed out <code>updateAt</code> from its very rich set of functions that manipulate linked lists.</p>
+<p>All this copying may seem inefficient. If you have to do multiple updates, then you will end up copying at least the <i>beginning</i> of the list each time. Tellingly, Haskell's <i>Prelude</i> (the standard library), with a very rich set of functions to manipulate linked lists. entirely omits any version of <code>updateAt</code>.</p>
 
 <p>In fact, a linked list, by default isn't the optimal structure for random access. However, we have seen that the benefit of using an immutable structure is that we get to keep the old and new versions of a structure at the same time, and with minimal memory usage, because of the sharing of data between the two structures.</p>
 
@@ -613,11 +615,11 @@
 
 <pre><code>    ARRAY:
      0  1  2  3 
-    [a][b][c][e]
+    [a][b][d][e]
 
     copy
      0  1  2  3  4
-    [a][b][c][e][e]
+    [a][b][d][d][e]
 
     update
      0  1  2  3  4 
@@ -627,19 +629,19 @@
 
 <pre><code>    ARRAY:          NEW
      0  1  2  3     0  1  2  3  4  5  6  7
-    [a][b][c][e]   [ ][ ][ ][ ][ ][ ][ ][ ]</code></pre>
+    [a][b][d][e]   [ ][ ][ ][ ][ ][ ][ ][ ]</code></pre>
 
 <p>Then we'll copy the data to the left of the insertion</p>
 
 <pre><code>    ARRAY:          NEW
      0  1  2  3     0  1  2  3  4  5  6  7
-    [a][b][c][e]   [a][b][c][ ][ ][ ][ ][ ]</code></pre>
+    [a][b][d][e]   [a][b][ ][ ][ ][ ][ ][ ]</code></pre>
 
 <p>and to the right</p>
 
 <pre><code>    ARRAY:          NEW
      0  1  2  3     0  1  2  3  4  5  6  7
-    [a][b][c][e]   [a][b][c][ ][e][ ][ ][ ]</code></pre>
+    [a][b][d][e]   [a][b][ ][d][e][ ][ ][ ]</code></pre>
 
 <p>and of course, add the inserted element. (Now, finally, we can de-allocate the old array from memory).</p>
 
@@ -653,30 +655,32 @@
                     0  1  2  3  4  5  6  7    #count
                    [a][b][c][d][e][ ][ ][ ]    5</code></pre>
 
-<p>Let's look at how we'd do that in a list:</p>
+<p>Let's look at how we'd insert an element into a list:</p>
 
 <pre><code>    LIST
     0     1     2     3     4
-    [a.]-&gt;[b.]-&gt;[c.]-&gt;[e.]-&gt;()</code></pre>
+    [a.]-&gt;[b.]-&gt;[d.]-&gt;[e.]-&gt;()</code></pre>
 
-<p>We need to re-point the link from <code>c</code> to a new list with value <code>d</code> that points to the remainder of the list <code>e</code>.</p>
+<p>We need to re-point the link from <code>b</code> to a new list with value <code>c</code> that points to the remainder of the list <code>d</code>.</p>
 
 <pre><code>    LIST
-    0     1     2     4     5
-    [a.]-&gt;[b.]-&gt;[c.]  [e.]-&gt;()
-                  \   /
-                  [d.]
-                   3</code></pre>
+    0     1      3     4     5
+    [a.]-&gt;[b.]   [d.]-&gt;[e.]-&gt;()
+             \   /
+             [c.]
+             2</code></pre>
 
 <p>If we were using a mutable data-structure, we'd do exactly this, and just mutate the references to point to the right place. With a pure, immutable list, we'll take advantage of sharing as before (by pointing to the <code>e</code> list, which remains unchanged) but we'll also have to copy the start of the list.</p>
 
 <pre><code>    LIST
     0     1     2     3     4     5
-    [a.]-&gt;[b.]-&gt;[c.]-------&gt;[e.]-&gt;()
-                          /
-    [a.]-&gt;[b.]-&gt;[c.]-&gt;[d.]
+    [a.]-&gt;[b.]-------&gt;[d.]-&gt;[e.]-&gt;()
+                    /
+    [a.]-&gt;[b.]-&gt;[c.]</code></pre>
 
-    # NOT TESTED
+<p>The insertion code is quite simple, and follows the same structure as <code>updateAt</code>:</p>
+
+<pre><code>    # NOT TESTED
     multi method insertAt (List::Empty $self: Int $pos, $new) { 
         die &quot;Can&#39;t insert into an Empty list&quot;; 
     }
@@ -693,9 +697,93 @@
         });
     }</code></pre>
 
-<p>Note how similar this is to the <code>updateAt</code> method! We copy the head of the list up until the point we want to insert, just as before. The only difference is that instead of linking the list to the original position's <i>tail</i>, we link to the whole list.</p>
+<p>Just as before, we copy the head of the list up until the point we want to insert. In fact, there is only difference between the routines! Instead of linking the list to the original position's <i>tail</i>, we link to the whole list.</p>
 
 <h4>Deleting an element</h4>
+
+<p>Deletion from an array will always involve shifting the elements after the one deleted to the left, and then decreasing the element count.</p>
+
+<pre><code>    array
+    0  1  2  3  4  5  6  7
+   [h][a][l][l][o][ ][ ][ ]  #5
+
+   [h][a][l][o][ ][ ][ ][ ]  #4</code></pre>
+
+<p>At this point, the algorithm might choose to reallocate the memory, to shrink the size of data stored.</p>
+
+<p>Again, using linked lists, this could be trivial.</p>
+
+<pre><code>    LIST
+    0     1     2     3     4     5
+    [h.]-&gt;[a.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+
+    [h.]-&gt;[a.]-&gt;[l.]-------&gt;[o.]-&gt;()</code></pre>
+
+<p>But again, if we want to use immutable lists, we'll have a copy and share, as before.</p>
+
+<pre><code>    # NOT TESTED
+    multi method deleteAt (List::Empty $self: Int $pos) { 
+        die &quot;Can&#39;t delete from an Empty list&quot;; 
+    }
+    multi method deleteAt (Int $pos where { $_ == 0 }) {
+        return $self-&gt;tail;
+    }
+    multi method deleteAt (Int $pos where { $_ &gt; 0 }) {
+        tail_call List::Link-&gt;new({
+            head =&gt; $self-&gt;head,
+            tail =&gt; $self-&gt;tail-&gt;deleteAt($pos - 1, $new);
+        });
+    }</code></pre>
+
+<p>This follows the same structure again, except that once we get to the element we want to delete, we simply skip over its <code>head</code> and return its <code>tail</code> instead.</p>
+
+<h4>Copying</h4>
+
+<p>TODO: a) we "copied" tail of list by just pointing at it. "copy" of first part was in fact a change. But a *deep copy* of a Pure FP structure is as simple as referring to it. TODO b) MooseX::Singleton</p>
+
+<h4>Comparing the array and list approaches</h4>
+
+<p>The pros and cons of each approach might include:</p>
+
+<ul>
+
+<li>List</li>
+
+<p>simple implementation for each case</p>
+
+<li>List</li>
+
+<p>immutable data - the old version still exists, if you need it</p>
+
+<li>List</li>
+
+<p>no having to shunt the right hand side of the list around in memory</p>
+
+<li>List</li>
+
+<p>no having to reallocate and move the entire structure as it grows and shrinks</p>
+
+<li>Array</li>
+
+<p>Very fast for updating single elements in place</p>
+
+<li>Array</li>
+
+<p>No having to copy the left-hand side of the array each time</p>
+
+<li>Array</li>
+
+<p>The result will still be an array - this may be important if you will be doing a lot of random access into the array.</p>
+
+</ul>
+
+<p>It is important to be aware of these trade-offs when deciding whether to look beyond your language's default dynamic array type, or not.</p>
+
+<p>But of course, so far we've only seen lists that are linked in one direction (also known as "singly linked lists".) To be able to fairly compare lists to arrays, we'll now look at at a variant that can be used to traverse the list in both directions.</p>
+
+<h3>Doubly linked lists</h3>
+
+<p>TODO</p>
 
 </body>
 </html>
