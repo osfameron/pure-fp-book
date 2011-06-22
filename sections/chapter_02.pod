@@ -680,12 +680,15 @@ entirely:
 
     LIST
     0     1     2     3     4     5
-          [e.]->[l.]->[l.]->[o.]->()
-              /
-    [h.]->[u.]
+    [h.] x{e.}->[l.]->[l.]->[o.]->()
+        \     /
+          [u.]
 
-But now we have no way of getting at the original list at all.  The solution 
-turns out to be to I<copy> everything before the element we're changing.
+But of course that means I<mutating> the tail of the the list C<'h'>, which
+we've promised we wouldn't do... immutable data-structures are I<hard>!
+
+The trick turns out to be to I<copy> everything before the element we're
+changing.
 
     LIST
     0     1     2     3     4     5
@@ -693,9 +696,10 @@ turns out to be to I<copy> everything before the element we're changing.
               /
     [h.]->[u.]
 
-We now have I<2> nodes that contain the value C<'h'> in their head, but which
-have entirely different tails.  Note, though, that they converge at C<'l'>,
-so we only need to copy part of the list.
+We now have I<2> different nodes that both contain the value C<'h'> in their
+head, but which are in fact different lists: they have entirely different
+tails.  Note, though, that they converge at C<'l'>, so we only need to copy
+part of the list.
 
     # NOT TESTED
     multi method updateAt (List::Empty $self: Int $pos, $new) { 
@@ -714,13 +718,17 @@ so we only need to copy part of the list.
         });
     }
 
-Once we get to position 0 we simply return a list with the modified value as
-its head, but the same tail as before.
+If you think about it, this method is following the same pattern of C<nth>,
+except that instead of just descending the list till we get to the element we
+want, we copy the list as we go.  Then, once we get to position C<0>, 
+we link this copied part of the list with the updated element, and the rest of
+the list.
 
 All this copying may seem inefficient.  If you have to do multiple updates,
 then you will end up copying at least the I<beginning> of the list each time.
-Tellingly, Haskell's I<Prelude> (the standard library) missed out C<updateAt>
-from its very rich set of functions that manipulate linked lists.
+Tellingly, Haskell's I<Prelude> (the standard library), with a very rich set of
+functions to manipulate linked lists.  entirely omits any version of 
+C<updateAt>.
 
 In fact, a linked list, by default isn't the optimal structure for random
 access.  However, we have seen that the benefit of using an immutable structure
@@ -767,11 +775,11 @@ the missing letter into the alphabet, we'd do:
 
     ARRAY:
      0  1  2  3 
-    [a][b][c][e]
+    [a][b][d][e]
 
     copy
      0  1  2  3  4
-    [a][b][c][e][e]
+    [a][b][d][d][e]
 
     update
      0  1  2  3  4 
@@ -787,19 +795,19 @@ here, to avoid having to re-allocate too often).
 
     ARRAY:          NEW
      0  1  2  3     0  1  2  3  4  5  6  7
-    [a][b][c][e]   [ ][ ][ ][ ][ ][ ][ ][ ]
+    [a][b][d][e]   [ ][ ][ ][ ][ ][ ][ ][ ]
 
 Then we'll copy the data to the left of the insertion
 
     ARRAY:          NEW
      0  1  2  3     0  1  2  3  4  5  6  7
-    [a][b][c][e]   [a][b][c][ ][ ][ ][ ][ ]
+    [a][b][d][e]   [a][b][ ][ ][ ][ ][ ][ ]
 
 and to the right
 
     ARRAY:          NEW
      0  1  2  3     0  1  2  3  4  5  6  7
-    [a][b][c][e]   [a][b][c][ ][e][ ][ ][ ]
+    [a][b][d][e]   [a][b][ ][d][e][ ][ ][ ]
 
 and of course, add the inserted element.  (Now, finally, we can de-allocate the
 old array from memory).
@@ -817,21 +825,21 @@ once we need more than 8 elements.  Of course, this does mean that we also need 
                     0  1  2  3  4  5  6  7    #count
                    [a][b][c][d][e][ ][ ][ ]    5
 
-Let's look at how we'd do that in a list:
+Let's look at how we'd insert an element into a list:
 
     LIST
     0     1     2     3     4
-    [a.]->[b.]->[c.]->[e.]->()
+    [a.]->[b.]->[d.]->[e.]->()
 
-We need to re-point the link from C<c> to a new list with value C<d> that
-points to the remainder of the list C<e>.
+We need to re-point the link from C<b> to a new list with value C<c> that
+points to the remainder of the list C<d>.
 
     LIST
-    0     1     2     4     5
-    [a.]->[b.]->[c.]  [e.]->()
-                  \   /
-                  [d.]
-                   3
+    0     1      3     4     5
+    [a.]->[b.]   [d.]->[e.]->()
+             \   /
+             [c.]
+             2
 
 If we were using a mutable data-structure, we'd do exactly this, and just
 mutate the references to point to the right place.   With a pure, immutable
@@ -840,9 +848,12 @@ which remains unchanged) but we'll also have to copy the start of the list.
 
     LIST
     0     1     2     3     4     5
-    [a.]->[b.]->[c.]------->[e.]->()
-                          /
-    [a.]->[b.]->[c.]->[d.]
+    [a.]->[b.]------->[d.]->[e.]->()
+                    /
+    [a.]->[b.]->[c.]
+
+The insertion code is quite simple, and follows the same structure as 
+C<updateAt>:
 
     # NOT TESTED
     multi method insertAt (List::Empty $self: Int $pos, $new) { 
@@ -861,10 +872,105 @@ which remains unchanged) but we'll also have to copy the start of the list.
         });
     }
 
-Note how similar this is to the C<updateAt> method!  We copy the head of the
-list up until the point we want to insert, just as before.  The only difference
-is that instead of linking the list to the original position's I<tail>, we link
-to the whole list.
+Just as before, we copy the head of the list up until the point we want to
+insert.  In fact, there is only difference between the routines!  Instead of
+linking the list to the original position's I<tail>, we link to the whole list.
 
 =head3 Deleting an element
 
+Deletion from an array will always involve shifting the elements after the
+one deleted to the left, and then decreasing the element count.
+
+    array
+    0  1  2  3  4  5  6  7
+   [h][a][l][l][o][ ][ ][ ]  #5
+
+   [h][a][l][o][ ][ ][ ][ ]  #4
+
+At this point, the algorithm might choose to reallocate the memory, to shrink
+the size of data stored.
+
+Again, using linked lists, this could be trivial.
+
+    LIST
+    0     1     2     3     4     5
+    [h.]->[a.]->[l.]->[l.]->[o.]->()
+
+    [h.]->[a.]->[l.]------->[o.]->()
+
+But again, if we want to use immutable lists, we'll have a copy and share,
+as before.
+
+    # NOT TESTED
+    multi method deleteAt (List::Empty $self: Int $pos) { 
+        die "Can't delete from an Empty list"; 
+    }
+    multi method deleteAt (Int $pos where { $_ == 0 }) {
+        return $self->tail;
+    }
+    multi method deleteAt (Int $pos where { $_ > 0 }) {
+        tail_call List::Link->new({
+            head => $self->head,
+            tail => $self->tail->deleteAt($pos - 1, $new);
+        });
+    }
+
+This follows the same structure again, except that once we get to the element
+we want to delete, we simply skip over its C<head> and return its C<tail>
+instead.
+
+=head3 Copying
+
+TODO: a) we "copied" tail of list by just pointing at it.  "copy" of first part
+was in fact a change.  But a *deep copy* of a Pure FP structure is as simple
+as referring to it.
+TODO b) MooseX::Singleton
+
+=head3 Comparing the array and list approaches
+
+The pros and cons of each approach might include:
+
+=over
+
+=item * List
+
+simple implementation for each case
+
+=item * List
+
+immutable data - the old version still exists, if you need it
+
+=item * List
+
+no having to shunt the right hand side of the list around in memory
+
+=item * List
+
+no having to reallocate and move the entire structure as it grows and shrinks
+
+=item * Array
+
+Very fast for updating single elements in place
+
+=item * Array
+
+No having to copy the left-hand side of the array each time
+
+=item * Array
+
+The result will still be an array - this may be important if you will be doing
+a lot of random access into the array.
+
+=back
+
+It is important to be aware of these trade-offs when deciding whether to look
+beyond your language's default dynamic array type, or not.
+
+But of course, so far we've only seen lists that are linked in one direction
+(also known as "singly linked lists".)  To be able to fairly compare lists to
+arrays, we'll now look at at a variant that can be used to traverse the list
+in both directions.
+
+=head2 Doubly linked lists
+
+TODO
