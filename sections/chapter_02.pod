@@ -974,3 +974,5 @@ in both directions.
 =head2 Doubly linked lists
 
 TODO
+
+TODO: mention garbage collection
