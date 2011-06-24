@@ -1,0 +1,25 @@
+=head1 A note on the implementations
+
+Z<implementation_note>
+
+(This note will be moved to Chapter 1)
+
+The examples in this book are in Perl, but they should be accessible and
+relevant to all the dynamic languages, for example: Javascript, Python, 
+and Ruby.  To this end, the examples all use the C<Moose> library, and
+in particular, the C<MooseX::Declare> sugar layer.  The former gives us
+a robust, "postmodern" Object Oriented framework that steals the best
+ideas from CLOS, Smalltalk, ML, and the other dynamic languages.  The
+latter gives us a syntax that has less of the "line-noise" that some
+might have expected when hearing the word "Perl".
+
+But, never fear, the code is still Perl: C<Moose> itself, in particular,
+is used in production and is actively maintained by a large team of volunteers
+and businesses.  The sugar layer is elegant, but if you are uncomfortable
+running macro transformations on your code, you lose little by rewriting the
+code without.
+
+Of course, it's always nice to see examples in your own language-of-choice,
+and I hope that people will contribute to this opensource (Creative Commons
+licensed) book with code samples in Javascript, Python, Ruby, and indeed
+in any other language.
