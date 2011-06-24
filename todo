@@ -1,0 +1,3 @@
+docpatches
+    - MXMS slurpy %opts handling
+           including not mixing these at *all*!

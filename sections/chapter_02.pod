@@ -44,7 +44,7 @@ The linked list is one of the oldest data structures in computing, dating
 back to the mid-1950s.  While it's a collection type, similar to an Array,
 it makes very different tradeoffs.
 
-In a dynamic programming language like Perl, Ruby, Python, of Javascript,
+In a dynamic programming language like Perl, Ruby, Python, or Javascript,
 we very rarely feel the need to look beyond the builtin array types, as they
 are usually Good Enough.  However, the linked list I<is> a fundamental building
 block, and we'll see that it is key for understanding concepts such as:
@@ -63,7 +63,7 @@ Beyond this, linked lists do have some features that arrays don't
 
 =over 4
 
-=item handling circular data
+=item ability to handle circular data
 
 =item infinite lists and streams
 
@@ -112,6 +112,8 @@ list, which has neither.  i.e. a list can be one of two things:
     [x.]->  a linking cell the connects a value to another list
             (where the other list is either another linking cell
             or an empty list)
+
+L<implementation_note>
 
 =head1 Implementation
 
@@ -193,9 +195,9 @@ of calling C<fromArray> on the remainder of the array.
 
 Typically in Perl we might use a condition like C<if> to distinguish between
 these cases.  But in both Functional and Object Oriented programming, it's
-often much more elegant to use pattern matching (of which "multiple dispatch"
-is a variant.) C<Moose> provides a rather nice and flexible way of declaring
-these, and we'll take advantage of it.
+often much more elegant to use pattern matching (of which an OO "multiple
+dispatch" is a variant.)  C<Moose> provides a rather nice and flexible way of
+declaring multiply dispatched methods, and we'll take advantage of it.
 
     use MooseX::MultiMethods;
 
@@ -238,7 +240,7 @@ There are ways to eliminate these warnings
     $DB::deep = 100_000_000; # some big number, greater than maximum 
                              # number of recursions
 
-But that would only be papering over the synptoms, the root problem would
+But doing so would only be papering over the synptoms, the root problem would
 remain: we may blow all the memory allocated to the call stack, and the
 interpreter may crash.
 
@@ -359,10 +361,10 @@ convert the function into an iterative one, that manages its own stack
 
 =back
 
-The best general tutorial to these methods using a dynamic programming language
-may well be Mark Jason Dominus's I<Higher Order Perl>, now freely available
-online at http://hop.perl.plover.com/ (though it's worth buying, whatever your
-programming language of choice).
+As far as I know, the best general tutorial to these methods using a dynamic
+programming language is Mark Jason Dominus's I<Higher Order Perl>.  It's not
+freely available online at C<http://hop.perl.plover.com/> to check it out, 
+and it's well worth buying, whatever your programming language of choice.
 
 We'll just briefly look at an example of each technique.
 
@@ -496,7 +498,7 @@ So, we could now write
         sub ($n) { $n % 2 }
     );
 
-=head3 C<fold>
+=head3 Reducing a list with C<fold>
 
 Folds are the result of repeatedly applying an operation to every pair of
 values in a List until you get a single value.  An example could be finding the
@@ -512,7 +514,7 @@ or as
 
     (((1 + 2) + 3) + 4) + 5 <-- a left fold
 
-Oddly, these two folds, C<foldr> and C<foldl> have rather different
+Oddly, these two folds, C<foldRight> and C<foldLeft> have rather different
 characteristics: sometimes one will be faster, or will never complete.
 
 With all these recursive algorithms, we have to consider the "base case",
@@ -539,11 +541,11 @@ progress through the list.
 
 Let's have a look at the left-fold first.
 
-    multi method foldl (List::Empty $self: CodeRef $f, $acc) {
+    multi method foldLeft (List::Empty $self: CodeRef $f, $acc) {
         return $acc;
     }
-    multi method foldl (List::Link $self: CodeRef $f, $acc) {
-        tail_call $self->tail->foldl($f, $f->($self->head, $acc));
+    multi method foldLeft (List::Link $self: CodeRef $f, $acc) {
+        tail_call $self->tail->foldLeft($f, $f->($self->head, $acc));
     }
 
 So the left fold is a typical recursive function.  Note how we have to pass
@@ -555,43 +557,43 @@ may have noticed that my original example omitted one:
     sum (1,2,3,4,5) = 1 + 2 + 3 + 4 + 5
 
 In this case we can simply use the first element in the list to start things
-off.  This obviously wouldn't work for an empty list!  Often such a fold is
-labelled with the number C<1>:
+off.  Often such a fold is labelled with the number C<1>.  
 
     # TODO test
-    method foldl1 (List::Link $self: CodeRef $f, $acc) {
-        return $self->tail->foldl($f, $self->head);
+    method foldLeft1 (List::Link $self: CodeRef $f, $acc) {
+        return $self->tail->foldLeft1($f, $self->head);
     }
 
 As we've specified that C<$self> must be a linking list, the method will fail
-entirely on an empty list.
+entirely on an empty list.  This is entirely expected behaviour for a C<foldLeft1>
+or C<foldRight1>.
 
 # TODO case where we have an accumulator, rather than a typical binop
 
 Now let's have a look at a right fold.  The empty case is, of course, the same:
 
-    multi method foldr (List::Empty $self: CodeRef $f, $acc) {
+    multi method foldRight (List::Empty $self: CodeRef $f, $acc) {
         return $acc;
     }
 
-But note how, unlike C<foldl>, the right fold isn't tail recursive:
+But note how, unlike C<foldLeft>, the right fold isn't tail recursive:
 
-    multi method foldr (List::Link $self: CodeRef $f, $acc) {
+    multi method foldRight (List::Link $self: CodeRef $f, $acc) {
         tail_call $f->(
             $self->head,
-            $self->tail->foldr($f, $acc),
+            $self->tail->foldRight($f, $acc),
         );
     }
 
 Though we have a tail call, it's only on the folding function C<$f>.  The
-actual call back into C<foldr> isn't in the tail position, where it can be
+actual call back into C<foldRight> isn't in the tail position, where it can be
 easily optimized, but rather I<inside> the call to this folding function.
 
 =over
 
 =item * EXERCISE:
 
-Try to optimize C<foldr> by making it tail-recursive or iterative, as
+Try to optimize C<foldRight> by making it tail-recursive or iterative, as
 we saw above with C<toArray>
 
 =back
