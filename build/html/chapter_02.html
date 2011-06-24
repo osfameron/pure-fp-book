@@ -46,7 +46,7 @@
 
 <p>The linked list is one of the oldest data structures in computing, dating back to the mid-1950s. While it's a collection type, similar to an Array, it makes very different tradeoffs.</p>
 
-<p>In a dynamic programming language like Perl, Ruby, Python, of Javascript, we very rarely feel the need to look beyond the builtin array types, as they are usually Good Enough. However, the linked list <i>is</i> a fundamental building block, and we'll see that it is key for understanding concepts such as:</p>
+<p>In a dynamic programming language like Perl, Ruby, Python, or Javascript, we very rarely feel the need to look beyond the builtin array types, as they are usually Good Enough. However, the linked list <i>is</i> a fundamental building block, and we'll see that it is key for understanding concepts such as:</p>
 
 <ul>
 
@@ -62,7 +62,7 @@
 
 <ul>
 
-<li>handling circular data
+<li>ability to handle circular data
 
 <li>infinite lists and streams
 
@@ -105,6 +105,18 @@
     [x.]-&gt;  a linking cell the connects a value to another list
             (where the other list is either another linking cell
             or an empty list)</code></pre>
+
+<h2>A note on the implementations</h2>
+
+<p><a name="implementation_note"></p>
+
+<p>(This note will be moved to Chapter 1)</p>
+
+<p>The examples in this book are in Perl, but they should be accessible and relevant to all the dynamic languages, for example: Javascript, Python, and Ruby. To this end, the examples all use the <code>Moose</code> library, and in particular, the <code>MooseX::Declare</code> sugar layer. The former gives us a robust, "postmodern" Object Oriented framework that steals the best ideas from CLOS, Smalltalk, ML, and the other dynamic languages. The latter gives us a syntax that has less of the "line-noise" that some might have expected when hearing the word "Perl".</p>
+
+<p>But, never fear, the code is still Perl: <code>Moose</code> itself, in particular, is used in production and is actively maintained by a large team of volunteers and businesses. The sugar layer is elegant, but if you are uncomfortable running macro transformations on your code, you lose little by rewriting the code without.</p>
+
+<p>Of course, it's always nice to see examples in your own language-of-choice, and I hope that people will contribute to this opensource (Creative Commons licensed) book with code samples in Javascript, Python, Ruby, and indeed in any other language.</p>
 
 <h2>Implementation</h2>
 
@@ -163,7 +175,7 @@
 
 </ul>
 
-<p>Typically in Perl we might use a condition like <code>if</code> to distinguish between these cases. But in both Functional and Object Oriented programming, it's often much more elegant to use pattern matching (of which "multiple dispatch" is a variant.) <code>Moose</code> provides a rather nice and flexible way of declaring these, and we'll take advantage of it.</p>
+<p>Typically in Perl we might use a condition like <code>if</code> to distinguish between these cases. But in both Functional and Object Oriented programming, it's often much more elegant to use pattern matching (of which an OO "multiple dispatch" is a variant.) <code>Moose</code> provides a rather nice and flexible way of declaring multiply dispatched methods, and we'll take advantage of it.</p>
 
 <pre><code>    use MooseX::MultiMethods;
 
@@ -194,7 +206,7 @@
     $DB::deep = 100_000_000; # some big number, greater than maximum 
                              # number of recursions</code></pre>
 
-<p>But that would only be papering over the synptoms, the root problem would remain: we may blow all the memory allocated to the call stack, and the interpreter may crash.</p>
+<p>But doing so would only be papering over the synptoms, the root problem would remain: we may blow all the memory allocated to the call stack, and the interpreter may crash.</p>
 
 <p>In languages like Scheme and Haskell, which are built around recursive data structures, the compilers will naturally do Tail Call Elimination. This means that if the last action in a routine is to call another method (often, but not always, the current method) then you can simply jump to that method, without having to add the overhead of storing the call on the stack.</p>
 
@@ -279,7 +291,7 @@
 
 </ul>
 
-<p>The best general tutorial to these methods using a dynamic programming language may well be Mark Jason Dominus's <i>Higher Order Perl</i>, now freely available online at http://hop.perl.plover.com/ (though it's worth buying, whatever your programming language of choice).</p>
+<p>As far as I know, the best general tutorial to these methods using a dynamic programming language is Mark Jason Dominus's <i>Higher Order Perl</i>. It's not freely available online at <code>http://hop.perl.plover.com/</code> to check it out, and it's well worth buying, whatever your programming language of choice.</p>
 
 <p>We'll just briefly look at an example of each technique.</p>
 
@@ -396,7 +408,7 @@
         sub ($n) { $n % 2 }
     );</code></pre>
 
-<h4><code>fold</code></h4>
+<h4>Reducing a list with <code>fold</code></h4>
 
 <p>Folds are the result of repeatedly applying an operation to every pair of values in a List until you get a single value. An example could be finding the sum of a list of numbers.</p>
 
@@ -410,7 +422,7 @@
 
 <pre><code>    (((1 + 2) + 3) + 4) + 5 &lt;-- a left fold</code></pre>
 
-<p>Oddly, these two folds, <code>foldr</code> and <code>foldl</code> have rather different characteristics: sometimes one will be faster, or will never complete.</p>
+<p>Oddly, these two folds, <code>foldRight</code> and <code>foldLeft</code> have rather different characteristics: sometimes one will be faster, or will never complete.</p>
 
 <p>With all these recursive algorithms, we have to consider the "base case", which for lists means "what happens with an empty list?" The typical way to do this is to also include a parameter which is an <i>identity</i> value. For a <code>sum</code> operation, this would be <code>0</code>.</p>
 
@@ -430,11 +442,11 @@
 
 <p>Let's have a look at the left-fold first.</p>
 
-<pre><code>    multi method foldl (List::Empty $self: CodeRef $f, $acc) {
+<pre><code>    multi method foldLeft (List::Empty $self: CodeRef $f, $acc) {
         return $acc;
     }
-    multi method foldl (List::Link $self: CodeRef $f, $acc) {
-        tail_call $self-&gt;tail-&gt;foldl($f, $f-&gt;($self-&gt;head, $acc));
+    multi method foldLeft (List::Link $self: CodeRef $f, $acc) {
+        tail_call $self-&gt;tail-&gt;foldLeft($f, $f-&gt;($self-&gt;head, $acc));
     }</code></pre>
 
 <p>So the left fold is a typical recursive function. Note how we have to pass the accumulator to the first call - often we'd call this the <i>init</i> argument.</p>
@@ -443,39 +455,39 @@
 
 <pre><code>    sum (1,2,3,4,5) = 1 + 2 + 3 + 4 + 5</code></pre>
 
-<p>In this case we can simply use the first element in the list to start things off. This obviously wouldn't work for an empty list! Often such a fold is labelled with the number <code>1</code>:</p>
+<p>In this case we can simply use the first element in the list to start things off. Often such a fold is labelled with the number <code>1</code>.</p>
 
 <pre><code>    # TODO test
-    method foldl1 (List::Link $self: CodeRef $f, $acc) {
-        return $self-&gt;tail-&gt;foldl($f, $self-&gt;head);
+    method foldLeft1 (List::Link $self: CodeRef $f, $acc) {
+        return $self-&gt;tail-&gt;foldLeft1($f, $self-&gt;head);
     }</code></pre>
 
-<p>As we've specified that <code>$self</code> must be a linking list, the method will fail entirely on an empty list.</p>
+<p>As we've specified that <code>$self</code> must be a linking list, the method will fail entirely on an empty list. This is entirely expected behaviour for a <code>foldLeft1</code> or <code>foldRight1</code>.</p>
 
 <p># TODO case where we have an accumulator, rather than a typical binop</p>
 
 <p>Now let's have a look at a right fold. The empty case is, of course, the same:</p>
 
-<pre><code>    multi method foldr (List::Empty $self: CodeRef $f, $acc) {
+<pre><code>    multi method foldRight (List::Empty $self: CodeRef $f, $acc) {
         return $acc;
     }</code></pre>
 
-<p>But note how, unlike <code>foldl</code>, the right fold isn't tail recursive:</p>
+<p>But note how, unlike <code>foldLeft</code>, the right fold isn't tail recursive:</p>
 
-<pre><code>    multi method foldr (List::Link $self: CodeRef $f, $acc) {
+<pre><code>    multi method foldRight (List::Link $self: CodeRef $f, $acc) {
         tail_call $f-&gt;(
             $self-&gt;head,
-            $self-&gt;tail-&gt;foldr($f, $acc),
+            $self-&gt;tail-&gt;foldRight($f, $acc),
         );
     }</code></pre>
 
-<p>Though we have a tail call, it's only on the folding function <code>$f</code>. The actual call back into <code>foldr</code> isn't in the tail position, where it can be easily optimized, but rather <i>inside</i> the call to this folding function.</p>
+<p>Though we have a tail call, it's only on the folding function <code>$f</code>. The actual call back into <code>foldRight</code> isn't in the tail position, where it can be easily optimized, but rather <i>inside</i> the call to this folding function.</p>
 
 <ul>
 
 <li>EXERCISE:</li>
 
-<p>Try to optimize <code>foldr</code> by making it tail-recursive or iterative, as we saw above with <code>toArray</code></p>
+<p>Try to optimize <code>foldRight</code> by making it tail-recursive or iterative, as we saw above with <code>toArray</code></p>
 
 </ul>
 
@@ -784,6 +796,8 @@
 <h3>Doubly linked lists</h3>
 
 <p>TODO</p>
+
+<p>TODO: mention garbage collection</p>
 
 </body>
 </html>
