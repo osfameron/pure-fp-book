@@ -601,25 +601,7 @@
 
 <p>This technique of data sharing where possible (and cloning with updated values where not) will be a common tool, so it is worth getting to grips with this simple example first, so we'll look now at inserting and deleting elements from a list.</p>
 
-<p>Of course, other data structures may well be more appropriate for your task, for example:</p>
-
-<ul>
-
-<li>Array</li>
-
-<p>Yes, they're mutable, but in some cases, they will still be the appropriate structure.</p>
-
-<li>Zippers</li>
-
-<p>We'll look at these shortly - these allow us to update a list immediately, in place, in constant time. Especially useful if you will be doing multiple updates.</p>
-
-<li>Trees</li>
-
-<p>We'll look at these in detail in the next chapter</p>
-
-</ul>
-
-<p>But first, we'll look at an operation where arrays are less convenient: insertion of an element into a list</p>
+<p>In both these cases, we'll say that the operation is perhaps <i>less</i> convenient with an array.</p>
 
 <h4>Inserting a new element</h4>
 
@@ -792,6 +774,8 @@
 <p>It is important to be aware of these trade-offs when deciding whether to look beyond your language's default dynamic array type, or not.</p>
 
 <p>But of course, so far we've only seen lists that are linked in one direction (also known as "singly linked lists".) To be able to fairly compare lists to arrays, we'll now look at at a variant that can be used to traverse the list in both directions.</p>
+
+<p>Later in the book, we'll also look at Trees, which may further address concerns with efficient random access to given elements.</p>
 
 <h3>Doubly linked lists</h3>
 
