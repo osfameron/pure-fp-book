@@ -1210,10 +1210,21 @@ But if we delete C<$list>, just look what happens.
 
 Though there are no variables pointing to any of these values, they will never
 get garbage collected!  If your program runs long enough, this kind of space
-leak may eventually become a problem.  The solution is to add a C<DESTROY>
-(or, for Moose objects, C<DEMOLISH>) method that deletes the onward reference.
-Again, this would require some hacking to delete the reference behind the scenes,
-but would be acceptable as it's encapsulated as part of object destruction.
+leak may eventually become a problem.  
+
+The solution in Perl is often to add a C<DESTROY> method (or, for Moose
+objects, C<DEMOLISH>) that deletes the onward reference.  Again, this would
+require some hacking to delete the reference behind the scenes, but would be
+acceptable as it's encapsulated as part of object destruction.
+
+But let's make C<Moose> work to earn its keep!  It actually comes with I<weak
+reference> support by default.  This makes Perl's reference counting discount
+the extra backward references when they're no longer required, avoiding the
+problem.  We'd simply nead to tweak our declaration to:
+
+#TODO test this, do I need to weaken 'next' too?
+
+        has prev => ( isa=>'Any', is=>'ro', weak_ref=>1 );
 
 # TODO handwave, further contributions welcome from language experts!
 Ruby (at least the MRI implementation) and most modern Javascript
