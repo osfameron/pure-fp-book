@@ -43,3 +43,6 @@ Perl Modules
         Sub::Curried (and Sub::Compose)
         Acme::Fork::Lazy
 
+    PERLER (Moritz Onken)
+        http://beta.metacpan.org/module/MooseX::Attribute::Deflator
+        (possibly model for MooseX::Promise?)
