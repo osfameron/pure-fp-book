@@ -27,6 +27,9 @@ Grab bag of random (unread) articles/books
 Haskell inspiration
     parallel mapreduce http://article.gmane.org/gmane.comp.lang.haskell.cafe/41944
 
+    11:32 <Jafet> osfameron: data Zipper a = Tag a (Zipper a) (Zipper a); zcycle xs = let n = length xs; wrap i = i+n `mod` n; tags = map (\i -> Tag (xs!!i) (tags!!wrap (i-1)) (tags!!wrap (i+1))) [0..n-1] -- should work
+    11:33 <Jafet> (Where “work” is produces a true cyclic list zipper.)
+
 Perl Modules
     CYCLES (ocharles)
         Data::Zipper
@@ -39,3 +42,4 @@ Perl Modules
         Acme::Monads
         Sub::Curried (and Sub::Compose)
         Acme::Fork::Lazy
+
