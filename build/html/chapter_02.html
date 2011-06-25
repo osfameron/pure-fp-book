@@ -974,7 +974,15 @@
     from           1.prev     2.prev        1.next     2.next
     count:           1          1             1           1</code></pre>
 
-<p>Though there are no variables pointing to any of these values, they will never get garbage collected! If your program runs long enough, this kind of space leak may eventually become a problem. The solution is to add a <code>DESTROY</code> (or, for Moose objects, <code>DEMOLISH</code>) method that deletes the onward reference. Again, this would require some hacking to delete the reference behind the scenes, but would be acceptable as it's encapsulated as part of object destruction.</p>
+<p>Though there are no variables pointing to any of these values, they will never get garbage collected! If your program runs long enough, this kind of space leak may eventually become a problem.</p>
+
+<p>The solution in Perl is often to add a <code>DESTROY</code> method (or, for Moose objects, <code>DEMOLISH</code>) that deletes the onward reference. Again, this would require some hacking to delete the reference behind the scenes, but would be acceptable as it's encapsulated as part of object destruction.</p>
+
+<p>But let's make <code>Moose</code> work to earn its keep! It actually comes with <i>weak reference</i> support by default. This makes Perl's reference counting discount the extra backward references when they're no longer required, avoiding the problem. We'd simply nead to tweak our declaration to:</p>
+
+<p>#TODO test this, do I need to weaken 'next' too?</p>
+
+<pre><code>        has prev =&gt; ( isa=&gt;&#39;Any&#39;, is=&gt;&#39;ro&#39;, weak_ref=&gt;1 );</code></pre>
 
 <p># TODO handwave, further contributions welcome from language experts! Ruby (at least the MRI implementation) and most modern Javascript implementations use <i>mark-and-sweep</i> GC instead. This doesn't suffer the same problem. Python uses a slightly modified reference counting algorithm with cycle detection, so may also avoid the issue.</p>
 
