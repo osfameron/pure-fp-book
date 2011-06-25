@@ -1100,6 +1100,7 @@ it turns out that doubly linked lists may be suboptimal in a purely functional
 context, and we'll shortly look at a better alternative.
 
 =head3 Modifying a doubly linked list
+Z<modifying_a_doubly_linked_list>
 
 Let's look at what happens when you modify an element in a doubly linked
 list:
