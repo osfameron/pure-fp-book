@@ -779,9 +779,212 @@
 
 <h3>Doubly linked lists</h3>
 
-<p>TODO</p>
+<p>We've seen that it's easy to traverse our linked lists from the beginning, by following the tail until we get to the <code>empty</code> list at the end. This is a fundamental capability, and is used by many fundamental functions, for example <code>map</code>, <code>filter</code>, and <code>fold</code>, as we saw. Occasionally, though, we will want to be able to traverse a list in <i>both</i> directions.</p>
 
-<p>TODO: mention garbage collection</p>
+<p>For example, consider a list of tabs in a web browser:</p>
+
+<pre><code>              google.com
+              google.com search results
+   focused -&gt; guardian.co.uk             
+              hop.perl.plover.com/book
+  </code></pre>
+
+<p>We might want to move to the next tab to the right (the <i>Higher Order Perl</i> book) or to the left (Google search results).</p>
+
+<p>A classic structure from computer science is the <i>doubly linked</i> list: as the name implies, rather than having just a <code>head</code> and a <code>tail</code>, it will have instead a <code>value</code> and then two links to <code>prev</code> and <code>next</code></p>
+
+<p>So, the tabs I showed above might be represented as:</p>
+
+<pre><code>   ()&lt;-[.1.]&lt;-&gt;[.2.]&lt;-&gt;[.3.]&lt;-&gt;[.4.]-&gt;()</code></pre>
+
+<p>In a mutable programming language, we might iterate each node, pointing it to the <code>next</code> node, and then pointing the next node's <code>prev</code> back at it.</p>
+
+<p>Of course we can't, strictly speaking, do that in a pure style. But we have at least two options:</p>
+
+<ul>
+
+<li>1 Cheat!
+
+<p>Though we're looking at purely functional data-structures, the fact remains that Perl, Python, Ruby, Javascript and friends are not purely functional languages. We <i>can</i> mutate values, when we need to, and nothing prevents us from writing:</p>
+
+<pre><code>  method fromArray ($class: @array) {
+    # ... hackety hack ...
+    return $self
+  }</code></pre>
+
+<p>Of course, if we'd declared <code>next</code> and <code>prev</code> as <code>'ro'</code> accessors, then <code>Moose</code> would prevent us from setting these. Again, nothing prevents us from simply declaring the accessor as <code>'ro'</code> (except the fear of shooting ourselves in the feet later!) We could alternatively retain the readonly accessor, but set the value by direct access to the underlying hash, or by calling methods on Moose's <i>meta-object protocol</i>.</p>
+
+<p>All of these would be hacks, <i>but</i> they would be well encapsulated hacks, i.e. only during the list construction, and we'd be entirely pure afterwards.</p>
+
+<p>EXERCISE: I'll leave creating a list by cheating as an exercise to the interested reader.</p>
+
+<li>2 Use laziness
+
+<p>If we're being pure we can't <i>go back</i> and set the <code>next</code> field to the new object once we've constructed it. So, one solution would be to set the <code>next</code> to the value <i>before</i> we've constructed it!</p>
+
+<p>If you've not programmed with laziness before, the last paragraph might sound simply insane. How could you possibly use a value before it's built? Yet languages like Haskell use this throughout. Though it's technically quite challenging to retrofit laziness to a language not designed for it, there are several modules for Perl that attempt to do this. We'll look at <code>Data::Thunk</code>.</p>
+
+<pre><code>    my $x = lazy { say &quot;Boo!&quot;; 4 };
+    # Right now, $x is a &quot;promise&quot; which will later by evaluated as 4.
+
+    my $y = $x + 1;
+    # Boo!
+    # $x is now replaced with &lt;4&gt;.  $y is now &lt;5&gt;</code></pre>
+
+<p>Amazingly, this also works for less trivial examples, so let's try to use it to create a doubly linked list. First of all, here's our class:</p>
+
+<pre><code>    use MooseX::Declare;
+    use Moose::Util::TypeConstraints;
+
+    BEGIN { role_type &#39;DLL&#39; };
+    role DLL { }
+
+    class DLL::Empty with DLL { }
+    class DLL::Node with DLL {
+        has val  =&gt; ( isa =&gt; &#39;Any&#39;, is =&gt; &#39;ro&#39; );
+        has prev =&gt; ( isa =&gt; &#39;DLL&#39;, is =&gt; &#39;ro&#39; );
+        has next =&gt; ( isa =&gt; &#39;DLL&#39;, is =&gt; &#39;ro&#39; );
+    }</code></pre>
+
+<p>We'll also define some helper functions:</p>
+
+<pre><code>    use syntax &#39;function&#39;;
+    fun empty {
+        DLL::Empty-&gt;new
+    }
+    fun node ($val,$prev,$next) {
+       DLL::Node-&gt;new(val=&gt;$val, prev=&gt;$prev, next=&gt;$next);
+    }</code></pre>
+
+<p>And now we can create our list. Note that we do it all in a <code>do</code> statement, which introduces a new lexical scope: this is vital for creating this kind of circular reference. Note that we have to declare the variables before we assign them, which we wouldn't have to do in Haskell, in order to appease the Perl compiler.</p>
+
+<pre><code>    my $list = do {
+        my ($x, $y, $z);
+        $x = lazy { node 1, empty, $y };
+        $y = lazy { node 2, $x,    $z };
+        $z = lazy { node 3, $y, empty };
+        $x;
+    };</code></pre>
+
+<p>This doesn't quite work: it turns out that our <code>thunk</code> can't quite fool Moose's type-checker into standing for it lazily. But if we change those declarations to:</p>
+
+<pre><code>        has prev =&gt; ( isa =&gt; &#39;Any&#39;, is =&gt; &#39;ro&#39; );
+        has next =&gt; ( isa =&gt; &#39;Any&#39;, is =&gt; &#39;ro&#39; );</code></pre>
+
+<p>This actually works!</p>
+
+<pre><code>    say $list-&gt;next-&gt;next-&gt;prev-&gt;val;   # 2!</code></pre>
+
+<p>This technique is known in Haskell circles as "Tying the knot", and is fascinating, and somewhat magical.</p>
+
+<p>Of course, manually having to construct the list as we did there is fiddly and repetitive so...</p>
+
+<p>EXERCISE: define the method <code>fromArray</code> using laziness, for any number of elements.</p>
+
+</ul>
+
+<p>You'll have noticed that I've left implementing both the workarounds as exercises. Though they're no doubt interesting, and valuable learning projects, it turns out that doubly linked lists may be suboptimal in a purely functional context, and we'll shortly look at a better alternative.</p>
+
+<h4>Modifying a doubly linked list</h4>
+
+<p>Let's look at what happens when you modify an element in a doubly linked list:</p>
+
+<pre><code>   ()&lt;-[.1.]&lt;-&gt;[.2.]&lt;-&gt;[.3.]&lt;-&gt;[.4.]-&gt;()
+                     ?\     /?
+                       [.5.]</code></pre>
+
+<p>As we saw before, with singly linked lists, we'd have to copy the left hand side of the list, because the list is flowing <i>in the direction of</i> a changed value, and is therefore itself changed.</p>
+
+<pre><code>   ()&lt;-[.1.]&lt;-&gt;[.2.]&lt;-&gt;[.3.]&lt;-&gt;[.4.]-&gt;()
+                            /?
+   ()&lt;-[.1.]&lt;-&gt;[.2.]&lt;-&gt;[.5.]</code></pre>
+
+<p>So that means going through the fiddly 2-way linking process on the whole of the left side. But notice that I highlighted the phrase "in the direction of", but we're looking at a list that flows in <i>both</i> directions. This means we also need to copy the right hand side!</p>
+
+<pre><code>   ()&lt;-[.1.]&lt;-&gt;[.2.]&lt;-&gt;[.3.]&lt;-&gt;[.4.]-&gt;()
+                              
+   ()&lt;-[.1.]&lt;-&gt;[.2.]&lt;-&gt;[.5.]&lt;-&gt;[.4.]-&gt;()</code></pre>
+
+<p>So any change to a doubly linked list requires modifying the whole list! This makes them a poor choice for purely functional programming, at least in the case where you have to make any changes after construction.</p>
+
+<h4>Garbage collection</h4>
+
+<p>In Perl, memory is allocated using <i>reference counting</i>. Every time a value is referred to by something (a variable, or an object attribute) this is added to its reference count. When a reference is dropped, this is reduced. When the count reaches <code>0</code>, the object is garbage collected. Simples!</p>
+
+<p>Indeed, for simple cases, this works perfectly. With a singly linked list, for example:</p>
+
+<pre><code>    my $list = List-&gt;fromArray(1,2,3)
+    
+                    [1.]-&gt;[2.]-&gt;[3.]-&gt;()
+    referred to:    $list &lt;1&gt;   &lt;2&gt;  &lt;3&gt;
+    from   
+    count:           1    1     1     1</code></pre>
+
+<p>The first item <code>1</code> has a single reference (from <code>$list</code>) and the subsequent references via <code>tail</code> keep the rest of the list in memory. If we now move down into the list, replacing the contents of <code>$list</code> with its own tail:</p>
+
+<pre><code>    $list = $list-&gt;tail;
+
+                    [1.]-&gt;[2.]-&gt;[3.]-&gt;()
+    referred to:        $list   &lt;2&gt;  &lt;3&gt;
+    from   
+    count:           0    1     1     1</code></pre>
+
+<p>we can see that Perl is now ready to garbage collect the node <code>1</code>. Similarly, if we delete <code>$list</code> entirely, then:</p>
+
+<pre><code>    undef $list;
+                    [1.]-&gt;[2.]-&gt;[3.]-&gt;()
+    referred to:          X     &lt;2&gt;  &lt;3&gt;
+    from   
+    count:           0    0     1     1</code></pre>
+
+<p>List no longer has a pointer to <code>2</code>, so in fact this should be:</p>
+
+<pre><code>                    [1.]-&gt;[2.]-&gt;[3.]-&gt;()
+    referred to:                X    &lt;3&gt;
+    from   
+    count:           0    0     0     1
+
+                    [1.]-&gt;[2.]-&gt;[3.]-&gt;()
+    referred to:                      X 
+    from   
+    count:           0    0     0     0</code></pre>
+
+<p>So, for linear structures, this works really well! But let's look at a circular structure, for example, a doubly linked list of 2 elements.</p>
+
+<pre><code>                    ()  &lt;-    [.1.]   &lt;-&gt;   [.2.]   -&gt;   ()
+    referred to:              $list         
+    from           1.prev     2.prev        1.next     2.next
+    count:           1          2             1           1</code></pre>
+
+<p>Obviously, we <i>want</i> the list to remain in memory if we move (after all, there's no value in a list that you can traverse in both directions if the direction you came from disappears when you move!)</p>
+
+<pre><code>    $list = $list-&gt;next;
+
+                    ()  &lt;-    [.1.]   &lt;-&gt;   [.2.]   -&gt;   ()
+    referred to:                             $list
+    from           1.prev     2.prev        1.next     2.next
+    count:           1          1             2           1</code></pre>
+
+<p>But if we delete <code>$list</code>, just look what happens.</p>
+
+<pre><code>    undef $list;
+
+                    ()  &lt;-    [.1.]   &lt;-&gt;   [.2.]   -&gt;   ()
+    referred to:                             
+    from           1.prev     2.prev        1.next     2.next
+    count:           1          1             1           1</code></pre>
+
+<p>Though there are no variables pointing to any of these values, they will never get garbage collected! If your program runs long enough, this kind of space leak may eventually become a problem. The solution is to add a <code>DESTROY</code> (or, for Moose objects, <code>DEMOLISH</code>) method that deletes the onward reference. Again, this would require some hacking to delete the reference behind the scenes, but would be acceptable as it's encapsulated as part of object destruction.</p>
+
+<p># TODO handwave, further contributions welcome from language experts! Ruby (at least the MRI implementation) and most modern Javascript implementations use <i>mark-and-sweep</i> GC instead. This doesn't suffer the same problem. Python uses a slightly modified reference counting algorithm with cycle detection, so may also avoid the issue.</p>
+
+<h4>So...</h4>
+
+<p>OK, so the Garbage Collection issue is avoidable, or not an issue, depending on your language. But even if you don't program in Perl, it's interesting to look at the reference counting problem, because it so closely mirrors the issue with updating a list. In general, cycles will interfere with the sharing aspect of functional data structures and, though they may sometimes be necessary or useful, we'll more often find ways to avoid them.</p>
+
+<p>We'll now look at exactly such a way of traversing a list, while being able to get back to the beginning.</p>
+
+<p>NEXT: Zippers</p>
 
 </body>
 </html>
