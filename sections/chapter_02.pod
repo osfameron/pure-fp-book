@@ -743,30 +743,8 @@ where not) will be a common tool, so it is worth getting to grips with this
 simple example first, so we'll look now at inserting and deleting elements from
 a list.
 
-Of course, other data structures may well be more appropriate for your task,
-for example:
-
-=over
-
-=item * Array
-
-Yes, they're mutable, but in some cases, they will still be the appropriate
-structure.
-
-=item * Zippers
-
-We'll look at these shortly - these allow us to update a list immediately, in
-place, in constant time.  Especially useful if you will be doing multiple
-updates.
-
-=item * Trees
-
-We'll look at these in detail in the next chapter
-
-=back
-
-But first, we'll look at an operation where arrays are less convenient:
-insertion of an element into a list
+In both these cases, we'll say that the operation is perhaps I<less> convenient
+with an array.
 
 =head3 Inserting a new element
 
@@ -972,6 +950,9 @@ But of course, so far we've only seen lists that are linked in one direction
 (also known as "singly linked lists".)  To be able to fairly compare lists to
 arrays, we'll now look at at a variant that can be used to traverse the list
 in both directions.
+
+Later in the book, we'll also look at Trees, which may further address concerns
+with efficient random access to given elements.
 
 =head2 Doubly linked lists
 
