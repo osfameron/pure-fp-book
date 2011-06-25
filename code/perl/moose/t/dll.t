@@ -12,9 +12,9 @@ use MooseX::Declare;
 use Moose::Util::TypeConstraints;
 
 BEGIN { role_type 'DLL' };
-
 role DLL { }
 
+class DLL::Empty with DLL { }
 class DLL::Node with DLL {
     has val => (
         isa => 'Any',
@@ -32,7 +32,6 @@ class DLL::Node with DLL {
     );
 }
 
-class DLL::Empty with DLL { }
 
 package main;
 use Test::More;
@@ -49,15 +48,15 @@ fun node ($val,$prev,$next) {
 
 my $list = do {
     my ($x, $y, $z);
-    # $x = lazy { node 1, empty, $y };
-    # $y = lazy { node 2, $x,    $z };
-    # $z = lazy { node 3, $y, empty };
+    $x = lazy { node 1, empty, $y };
+    $y = lazy { node 2, $x,    $z };
+    $z = lazy { node 3, $y, empty };
     # $x = lazy_new 'DLL::Node' => args=>[val=>1, prev=>empty, next=>$y];
     # $y = lazy_new 'DLL::Node' => args=>[val=>2, prev=>$x,    next=>$z];
     # $z = lazy_new 'DLL::Node' => args=>[val=>3, prev=>$y, next=>empty];
-    $x = lazy_object { node 1, empty, $y }, class=>'DLL::Node';
-    $y = lazy_object { node 2, $x,    $z }, class=>'DLL::Node';
-    $z = lazy_object { node 3, $y, empty }, class=>'DLL::Node';
+    # $x = lazy_object { node 1, empty, $y }, class=>'DLL::Node';
+    # $y = lazy_object { node 2, $x,    $z }, class=>'DLL::Node';
+    # $z = lazy_object { node 3, $y, empty }, class=>'DLL::Node';
     $x;
 };
 
