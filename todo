@@ -1,3 +1,12 @@
 docpatches
     - MXMS slurpy %opts handling
            including not mixing these at *all*!
+
+code
+    Data::Thunk::Moosey->lazy_moose
+        as per doy, this will check does_role
+        (which may require a patch to Moose, that he's looking at)
+
+pseudopod
+    O<foo.png> required for App::pod2pdf, but this makes the HTML
+    parser cry.  How best to deal with this?
