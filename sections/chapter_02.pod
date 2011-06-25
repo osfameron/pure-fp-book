@@ -956,6 +956,280 @@ with efficient random access to given elements.
 
 =head2 Doubly linked lists
 
-TODO
+We've seen that it's easy to traverse our linked lists from the beginning, by
+following the tail until we get to the C<empty> list at the end.  This is a
+fundamental capability, and is used by many fundamental functions, for example
+C<map>, C<filter>, and C<fold>, as we saw.  Occasionally, though, we will want
+to be able to traverse a list in I<both> directions.
 
-TODO: mention garbage collection
+For example, consider a list of tabs in a web browser:
+
+              google.com
+              google.com search results
+   focused -> guardian.co.uk             
+              hop.perl.plover.com/book
+  
+We might want to move to the next tab to the right (the I<Higher Order Perl>
+book) or to the left (Google search results).
+
+A classic structure from computer science is the I<doubly linked> list: as
+the name implies, rather than having just a C<head> and a C<tail>, it will
+have instead a C<value> and then two links to C<prev> and C<next>
+
+So, the tabs I showed above might be represented as:
+
+   ()<-[.1.]<->[.2.]<->[.3.]<->[.4.]->()
+
+In a mutable programming language, we might iterate each node, pointing it to
+the C<next> node, and then pointing the next node's C<prev> back at it.
+
+Of course we can't, strictly speaking, do that in a pure style.  But we have
+at least two options:
+
+=over
+
+=item 1 Cheat!
+
+Though we're looking at purely functional data-structures, the fact remains
+that Perl, Python, Ruby, Javascript and friends are not purely functional
+languages.  We I<can> mutate values, when we need to, and nothing prevents
+us from writing:
+
+  method fromArray ($class: @array) {
+    # ... hackety hack ...
+    return $self
+  }
+
+Of course, if we'd declared C<next> and C<prev> as C<'ro'> accessors, then
+C<Moose> would prevent us from setting these.  Again, nothing prevents us
+from simply declaring the accessor as C<'ro'> (except the fear of shooting
+ourselves in the feet later!)  We could alternatively retain the readonly
+accessor, but set the value by direct access to the underlying hash, or
+by calling methods on Moose's I<meta-object protocol>.
+
+All of these would be hacks, I<but> they would be well encapsulated hacks,
+i.e. only during the list construction, and we'd be entirely pure afterwards.
+
+EXERCISE: I'll leave creating a list by cheating as an exercise to the
+interested reader.
+
+=item 2 Use laziness
+
+If we're being pure we can't I<go back> and set the C<next> field to the new
+object once we've constructed it.  So, one solution would be to set the
+C<next> to the value I<before> we've constructed it!
+
+If you've not programmed with laziness before, the last paragraph might sound
+simply insane.  How could you possibly use a value before it's built?  Yet
+languages like Haskell use this throughout.  Though it's technically quite
+challenging to retrofit laziness to a language not designed for it, there are
+several modules for Perl that attempt to do this.  We'll look at C<Data::Thunk>.
+
+    my $x = lazy { say "Boo!"; 4 };
+    # Right now, $x is a "promise" which will later by evaluated as 4.
+
+    my $y = $x + 1;
+    # Boo!
+    # $x is now replaced with <4>.  $y is now <5>
+
+Amazingly, this also works for less trivial examples, so let's try to use it
+to create a doubly linked list.  First of all, here's our class:
+
+    use MooseX::Declare;
+    use Moose::Util::TypeConstraints;
+
+    BEGIN { role_type 'DLL' };
+    role DLL { }
+
+    class DLL::Empty with DLL { }
+    class DLL::Node with DLL {
+        has val  => ( isa => 'Any', is => 'ro' );
+        has prev => ( isa => 'DLL', is => 'ro' );
+        has next => ( isa => 'DLL', is => 'ro' );
+    }
+
+We'll also define some helper functions:
+
+    use syntax 'function';
+    fun empty {
+        DLL::Empty->new
+    }
+    fun node ($val,$prev,$next) {
+       DLL::Node->new(val=>$val, prev=>$prev, next=>$next);
+    }
+
+And now we can create our list.  Note that we do it all in a C<do> statement,
+which introduces a new lexical scope: this is vital for creating this kind
+of circular reference.  Note that we have to declare the variables before we
+assign them, which we wouldn't have to do in Haskell, in order to appease the
+Perl compiler.
+
+    my $list = do {
+        my ($x, $y, $z);
+        $x = lazy { node 1, empty, $y };
+        $y = lazy { node 2, $x,    $z };
+        $z = lazy { node 3, $y, empty };
+        $x;
+    };
+
+This doesn't quite work: it turns out that our C<thunk> can't quite fool
+Moose's type-checker into standing for it lazily.  But if we change those
+declarations to:
+
+        has prev => ( isa => 'Any', is => 'ro' );
+        has next => ( isa => 'Any', is => 'ro' );
+
+This actually works!
+
+    say $list->next->next->prev->val;   # 2!
+
+This technique is known in Haskell circles as "Tying the knot", and is
+fascinating, and somewhat magical.
+
+Of course, manually having to construct the list as we did there is fiddly
+and repetitive so...
+
+EXERCISE: define the method C<fromArray> using laziness, for any number of
+elements.
+
+=back
+
+You'll have noticed that I've left implementing both the workarounds as
+exercises.  Though they're no doubt interesting, and valuable learning projects,
+it turns out that doubly linked lists may be suboptimal in a purely functional
+context, and we'll shortly look at a better alternative.
+
+=head3 Modifying a doubly linked list
+
+Let's look at what happens when you modify an element in a doubly linked
+list:
+
+   ()<-[.1.]<->[.2.]<->[.3.]<->[.4.]->()
+                     ?\     /?
+                       [.5.]
+
+As we saw before, with singly linked lists, we'd have to copy the left hand
+side of the list, because the list is flowing I<in the direction of> a changed
+value, and is therefore itself changed.
+
+   ()<-[.1.]<->[.2.]<->[.3.]<->[.4.]->()
+                            /?
+   ()<-[.1.]<->[.2.]<->[.5.]
+
+So that means going through the fiddly 2-way linking process on the whole of
+the left side.  But notice that I highlighted the phrase "in the direction of",
+but we're looking at a list that flows in I<both> directions.  This means we
+also need to copy the right hand side!
+
+   ()<-[.1.]<->[.2.]<->[.3.]<->[.4.]->()
+                              
+   ()<-[.1.]<->[.2.]<->[.5.]<->[.4.]->()
+
+So any change to a doubly linked list requires modifying the whole list!  This
+makes them a poor choice for purely functional programming, at least in the case
+where you have to make any changes after construction.
+
+=head3 Garbage collection
+
+In Perl, memory is allocated using I<reference counting>.  Every time a value is
+referred to by something (a variable, or an object attribute) this is added to
+its reference count.  When a reference is dropped, this is reduced.  When the
+count reaches C<0>, the object is garbage collected.  Simples!
+
+Indeed, for simple cases, this works perfectly.  With a singly linked list, for
+example:
+
+                
+    my $list = List->fromArray(1,2,3)
+    
+                    [1.]->[2.]->[3.]->()
+    referred to:    $list <1>   <2>  <3>
+    from   
+    count:           1    1     1     1
+
+The first item C<1> has a single reference (from C<$list>) and the subsequent
+references via C<tail> keep the rest of the list in memory.  If we now move
+down into the list, replacing the contents of C<$list> with its own tail:
+
+    $list = $list->tail;
+
+                    [1.]->[2.]->[3.]->()
+    referred to:        $list   <2>  <3>
+    from   
+    count:           0    1     1     1
+
+we can see that Perl is now ready to garbage collect the node C<1>.  Similarly, if we
+delete C<$list> entirely, then:
+
+    undef $list;
+                    [1.]->[2.]->[3.]->()
+    referred to:          X     <2>  <3>
+    from   
+    count:           0    0     1     1
+
+List no longer has a pointer to C<2>, so in fact this should be:
+
+                    [1.]->[2.]->[3.]->()
+    referred to:                X    <3>
+    from   
+    count:           0    0     0     1
+
+                    [1.]->[2.]->[3.]->()
+    referred to:                      X 
+    from   
+    count:           0    0     0     0
+
+So, for linear structures, this works really well!  But let's look at a circular
+structure, for example, a doubly linked list of 2 elements.
+
+                    ()  <-    [.1.]   <->   [.2.]   ->   ()
+    referred to:              $list         
+    from           1.prev     2.prev        1.next     2.next
+    count:           1          2             1           1
+
+Obviously, we I<want>  the list to remain in memory if we move (after all, there's
+no value in a list that you can traverse in both directions if the direction you
+came from disappears when you move!)
+
+    $list = $list->next;
+
+                    ()  <-    [.1.]   <->   [.2.]   ->   ()
+    referred to:                             $list
+    from           1.prev     2.prev        1.next     2.next
+    count:           1          1             2           1
+
+But if we delete C<$list>, just look what happens.
+
+    undef $list;
+
+                    ()  <-    [.1.]   <->   [.2.]   ->   ()
+    referred to:                             
+    from           1.prev     2.prev        1.next     2.next
+    count:           1          1             1           1
+
+Though there are no variables pointing to any of these values, they will never
+get garbage collected!  If your program runs long enough, this kind of space
+leak may eventually become a problem.  The solution is to add a C<DESTROY>
+(or, for Moose objects, C<DEMOLISH>) method that deletes the onward reference.
+Again, this would require some hacking to delete the reference behind the scenes,
+but would be acceptable as it's encapsulated as part of object destruction.
+
+# TODO handwave, further contributions welcome from language experts!
+Ruby (at least the MRI implementation) and most modern Javascript
+implementations use I<mark-and-sweep> GC instead.  This doesn't suffer the same
+problem.  Python uses a slightly modified reference counting algorithm with
+cycle detection, so may also avoid the issue.
+
+=head3 So...
+
+OK, so the Garbage Collection issue is avoidable, or not an issue, depending on
+your language.  But even if you don't program in Perl, it's interesting to look
+at the reference counting problem, because it so closely mirrors the issue with
+updating a list.  In general, cycles will interfere with the sharing aspect of
+functional data structures and, though they may sometimes be necessary or
+useful, we'll more often find ways to avoid them.
+
+We'll now look at exactly such a way of traversing a list, while being able to
+get back to the beginning.
+
+NEXT: Zippers
