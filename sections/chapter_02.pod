@@ -51,11 +51,17 @@ block, and we'll see that it is key for understanding concepts such as:
 
 =over 4
 
-=item recursive thinking
+=item *
 
-=item data-sharing
+recursive thinking
 
-=item persistent data structures
+=item *
+
+data-sharing
+
+=item *
+
+persistent data structures
 
 =back
 
@@ -63,11 +69,17 @@ Beyond this, linked lists do have some features that arrays don't
 
 =over 4
 
-=item ability to handle circular data
+=item *
 
-=item infinite lists and streams
+ability to handle circular data
 
-=item possibility for automatic parallelisation
+=item *
+
+infinite lists and streams
+
+=item *
+
+possibility for automatic parallelisation
 
 =back
 
@@ -591,7 +603,7 @@ easily optimized, but rather I<inside> the call to this folding function.
 
 =over
 
-=item * EXERCISE:
+=item EXERCISE:
 
 Try to optimize C<foldRight> by making it tail-recursive or iterative, as
 we saw above with C<toArray>
@@ -912,34 +924,35 @@ The pros and cons of each approach might include:
 
 =over
 
-=item * List
+=item * 
 
-simple implementation for each case
+B<List> simple implementation for each case
 
-=item * List
+=item * 
 
-immutable data - the old version still exists, if you need it
+B<List> immutable data - the old version still exists, if you need it
 
-=item * List
+=item * 
 
-no having to shunt the right hand side of the list around in memory
+B<List> no having to shunt the right hand side of the list around in memory
 
-=item * List
+=item * 
 
-no having to reallocate and move the entire structure as it grows and shrinks
+B<List> no having to reallocate and move the entire structure as it grows and
+shrinks
 
-=item * Array
+=item * 
 
-Very fast for updating single elements in place
+B<Array> Very fast for updating single elements in place
 
-=item * Array
+=item * 
 
-No having to copy the left-hand side of the array each time
+B<Array> No having to copy the left-hand side of the array each time
 
-=item * Array
+=item * 
 
-The result will still be an array - this may be important if you will be doing
-a lot of random access into the array.
+B<Array> The result will still be an array - this may be important if you will
+be doing a lot of random access into the array.
 
 =back
 
@@ -988,7 +1001,7 @@ at least two options:
 
 =over
 
-=item 1 Cheat!
+=item 1. Cheat!
 
 Though we're looking at purely functional data-structures, the fact remains
 that Perl, Python, Ruby, Javascript and friends are not purely functional
@@ -1013,7 +1026,7 @@ i.e. only during the list construction, and we'd be entirely pure afterwards.
 EXERCISE: I'll leave creating a list by cheating as an exercise to the
 interested reader.
 
-=item 2 Use laziness
+=item 2. Use laziness
 
 If we're being pure we can't I<go back> and set the C<next> field to the new
 object once we've constructed it.  So, one solution would be to set the
@@ -1135,9 +1148,9 @@ where you have to make any changes after construction.
 In Perl, memory is allocated using I<reference counting>.  Every time a value is
 referred to by something (a variable, or an object attribute) this is added to
 its reference count.  When a reference is dropped, this is reduced.  When the
-count reaches C<0>, the object is garbage collected.  Simples!
+count reaches C<0>, the object is garbage collected.
 
-Indeed, for simple cases, this works perfectly.  With a singly linked list, for
+Now, for simple cases, this works perfectly.  With a singly linked list, for
 example:
 
                 
