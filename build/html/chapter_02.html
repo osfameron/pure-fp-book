@@ -741,19 +741,31 @@
 
 <ul>
 
-<li><b>List</b> simple implementation for each case</li>
+<li>Lists
 
-<li><b>List</b> immutable data - the old version still exists, if you need it</li>
+<ul>
 
-<li><b>List</b> no having to shunt the right hand side of the list around in memory</li>
+<li>simple implementation for each case</li>
 
-<li><b>List</b> no having to reallocate and move the entire structure as it grows and shrinks</li>
+<li>immutable data - the old version still exists, if you need it</li>
 
-<li><b>Array</b> Very fast for updating single elements in place</li>
+<li>no having to shunt the right hand side of the list around in memory</li>
 
-<li><b>Array</b> No having to copy the left-hand side of the array each time</li>
+<li>no having to reallocate and move the entire structure as it grows and shrinks</li>
 
-<li><b>Array</b> The result will still be an array - this may be important if you will be doing a lot of random access into the array.</li>
+</ul>
+
+<li>Array
+
+<ul>
+
+<li>Very fast for updating single elements in place</li>
+
+<li>No having to copy the left-hand side of the array each time</li>
+
+<li>The result will still be an array - this may be important if you will be doing a lot of random access into the array.</li>
+
+</ul>
 
 </ul>
 
@@ -789,7 +801,7 @@
 
 <ul>
 
-<li>1. Cheat!
+<li>1. <b>Cheat!</b>
 
 <p>Though we're looking at purely functional data-structures, the fact remains that Perl, Python, Ruby, Javascript and friends are not purely functional languages. We <i>can</i> mutate values, when we need to, and nothing prevents us from writing:</p>
 
@@ -798,13 +810,13 @@
     return $self
   }</code></pre>
 
-<p>Of course, if we'd declared <code>next</code> and <code>prev</code> as <code>'ro'</code> accessors, then <code>Moose</code> would prevent us from setting these. Again, nothing prevents us from simply declaring the accessor as <code>'ro'</code> (except the fear of shooting ourselves in the feet later!) We could alternatively retain the readonly accessor, but set the value by direct access to the underlying hash, or by calling methods on Moose's <i>meta-object protocol</i>.</p>
+<p>Of course, if we'd declared <code>next</code> and <code>prev</code> as <code>'ro'</code> accessors, then <code>Moose</code> would prevent us from setting these. Again, nothing prevents us from simply declaring the accessor as <code>'rw'</code> (except the fear of shooting ourselves in the feet later!) We could alternatively retain the readonly accessor, but set the value directly by either access to the underlying hash or (slightly more cleanly, but more verbosely) by calling methods on Moose's <i>meta-object protocol</i>.</p>
 
-<p>All of these would be hacks, <i>but</i> they would be well encapsulated hacks, i.e. only during the list construction, and we'd be entirely pure afterwards.</p>
+<p>All of these would be hacks, <i>but</i> they would be well encapsulated hacks, i.e. happen only during the list construction, and we'd be entirely pure for the object's actual lifetime.</p>
 
 <p>EXERCISE: I'll leave creating a list by cheating as an exercise to the interested reader.</p>
 
-<li>2. Use laziness
+<li>2. <b>Use laziness</b>
 
 <p>If we're being pure we can't <i>go back</i> and set the <code>next</code> field to the new object once we've constructed it. So, one solution would be to set the <code>next</code> to the value <i>before</i> we've constructed it!</p>
 
@@ -962,13 +974,21 @@
 
 <p>Though there are no variables pointing to any of these values, they will never get garbage collected! If your program runs long enough, this kind of space leak may eventually become a problem.</p>
 
-<p>The solution in Perl is often to add a <code>DESTROY</code> method (or, for Moose objects, <code>DEMOLISH</code>) that deletes the onward reference. Again, this would require some hacking to delete the reference behind the scenes, but would be acceptable as it's encapsulated as part of object destruction.</p>
+<p>Perl has two workarounds for this:</p>
 
-<p>But let's make <code>Moose</code> work to earn its keep! It actually comes with <i>weak reference</i> support by default. This makes Perl's reference counting discount the extra backward references when they're no longer required, avoiding the problem. We'd simply nead to tweak our declaration to:</p>
+<ul>
 
-<p>#TODO test this, do I need to weaken 'next' too?</p>
+<li>1. Add a <code>DESTROY</code> method (or, for Moose objects, <code>DEMOLISH</code>) that deletes the onward reference. Again, this would require some hacking to delete the reference behind the scenes, but would be acceptable as it's encapsulated as part of object destruction.</li>
 
-<pre><code>        has prev =&gt; ( isa=&gt;&#39;Any&#39;, is=&gt;&#39;ro&#39;, weak_ref=&gt;1 );</code></pre>
+<p>Of course, in the case of doubly linked lists, the problem is that the object never gets destroyed, so this isn't relevant.</p>
+
+<li>2. Using <i>weak references</i>. <code>Moose</code> has support for this, by declaring an attribute with <code>weak_ref =&gt; 1</code>. This is great for situations where you have a <i>primary</i> object which points to other objects, keeping them alive. They in turn would refer, <i>weakly</i> to their parent object, but wouldn't keep it alive.</li>
+
+<p>Unfortunately, a doubly-linked list is exactly the opposite of this: the list can be focused on any given node, and must keep all the nodes in either direction alive at all times.</p>
+
+</ul>
+
+<p>Effectively, this means that you can't rely on automatic garbage collection for a doubly linked list, and would have to manually call a <code>$list-&gt;delete</code> method (which then unpicks the references all the way along the list in both directions).</p>
 
 <p># TODO handwave, further contributions welcome from language experts! Ruby (at least the MRI implementation) and most modern Javascript implementations use <i>mark-and-sweep</i> GC instead. This doesn't suffer the same problem. Python uses a slightly modified reference counting algorithm with cycle detection, so may also avoid the issue.</p>
 
