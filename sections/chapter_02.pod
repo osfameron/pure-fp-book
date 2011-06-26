@@ -49,7 +49,7 @@ we very rarely feel the need to look beyond the builtin array types, as they
 are usually Good Enough.  However, the linked list I<is> a fundamental building
 block, and we'll see that it is key for understanding concepts such as:
 
-=over 4
+=over
 
 =item *
 
@@ -67,7 +67,7 @@ persistent data structures
 
 Beyond this, linked lists do have some features that arrays don't
 
-=over 4
+=over
 
 =item *
 
@@ -924,35 +924,47 @@ The pros and cons of each approach might include:
 
 =over
 
-=item * 
+=item Lists
 
-B<List> simple implementation for each case
-
-=item * 
-
-B<List> immutable data - the old version still exists, if you need it
+=over
 
 =item * 
 
-B<List> no having to shunt the right hand side of the list around in memory
+simple implementation for each case
 
 =item * 
 
-B<List> no having to reallocate and move the entire structure as it grows and
+immutable data - the old version still exists, if you need it
+
+=item * 
+
+no having to shunt the right hand side of the list around in memory
+
+=item * 
+
+no having to reallocate and move the entire structure as it grows and
 shrinks
 
-=item * 
+=back
 
-B<Array> Very fast for updating single elements in place
+=item Array
 
-=item * 
-
-B<Array> No having to copy the left-hand side of the array each time
+=over
 
 =item * 
 
-B<Array> The result will still be an array - this may be important if you will
+Very fast for updating single elements in place
+
+=item * 
+
+No having to copy the left-hand side of the array each time
+
+=item * 
+
+The result will still be an array - this may be important if you will
 be doing a lot of random access into the array.
+
+=back
 
 =back
 
@@ -1001,7 +1013,7 @@ at least two options:
 
 =over
 
-=item 1. Cheat!
+=item 1.  B<Cheat!>
 
 Though we're looking at purely functional data-structures, the fact remains
 that Perl, Python, Ruby, Javascript and friends are not purely functional
@@ -1015,18 +1027,20 @@ us from writing:
 
 Of course, if we'd declared C<next> and C<prev> as C<'ro'> accessors, then
 C<Moose> would prevent us from setting these.  Again, nothing prevents us
-from simply declaring the accessor as C<'ro'> (except the fear of shooting
+from simply declaring the accessor as C<'rw'> (except the fear of shooting
 ourselves in the feet later!)  We could alternatively retain the readonly
-accessor, but set the value by direct access to the underlying hash, or
-by calling methods on Moose's I<meta-object protocol>.
+accessor, but set the value directly by either access to the underlying hash
+or (slightly more cleanly, but more verbosely) by calling methods on Moose's
+I<meta-object protocol>.
 
 All of these would be hacks, I<but> they would be well encapsulated hacks,
-i.e. only during the list construction, and we'd be entirely pure afterwards.
+i.e. happen only during the list construction, and we'd be entirely pure
+for the object's actual lifetime.
 
 EXERCISE: I'll leave creating a list by cheating as an exercise to the
 interested reader.
 
-=item 2. Use laziness
+=item 2.  B<Use laziness>
 
 If we're being pure we can't I<go back> and set the C<next> field to the new
 object once we've constructed it.  So, one solution would be to set the
@@ -1225,19 +1239,38 @@ Though there are no variables pointing to any of these values, they will never
 get garbage collected!  If your program runs long enough, this kind of space
 leak may eventually become a problem.  
 
-The solution in Perl is often to add a C<DESTROY> method (or, for Moose
-objects, C<DEMOLISH>) that deletes the onward reference.  Again, this would
-require some hacking to delete the reference behind the scenes, but would be
-acceptable as it's encapsulated as part of object destruction.
+Perl has two workarounds for this:
 
-But let's make C<Moose> work to earn its keep!  It actually comes with I<weak
-reference> support by default.  This makes Perl's reference counting discount
-the extra backward references when they're no longer required, avoiding the
-problem.  We'd simply nead to tweak our declaration to:
+=over
 
-#TODO test this, do I need to weaken 'next' too?
+=item *
 
-        has prev => ( isa=>'Any', is=>'ro', weak_ref=>1 );
+1. Add a C<DESTROY> method (or, for Moose objects, C<DEMOLISH>) that deletes the
+onward reference.  Again, this would require some hacking to delete the
+reference behind the scenes, but would be acceptable as it's encapsulated as
+part of object destruction.
+
+Of course, in the case of doubly linked lists, the problem is that the object
+never gets destroyed, so this isn't relevant.
+
+=item *
+
+2.  Using I<weak references>.  C<Moose> has support for this, by declaring an
+attribute with C<weak_ref =E<gt> 1>.  This is great for situations where you
+have a I<primary> object which points to other objects, keeping them alive.
+They in turn would refer, I<weakly> to their parent object, but wouldn't keep
+it alive.  
+
+Unfortunately, a doubly-linked list is exactly the opposite of this:
+the list can be focused on any given node, and must keep all the nodes in
+either direction alive at all times.  
+
+=back
+
+Effectively, this means that you can't rely on automatic garbage collection for
+a doubly linked list, and would have to manually call a C<$list-E<gt>delete>
+method (which then unpicks the references all the way along the list in both
+directions).
 
 # TODO handwave, further contributions welcome from language experts!
 Ruby (at least the MRI implementation) and most modern Javascript
