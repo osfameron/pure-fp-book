@@ -998,7 +998,57 @@
 
 <p>We'll now look at exactly such a way of traversing a list, while being able to get back to the beginning.</p>
 
-<p>NEXT: Zippers</p>
+<h3>A pointer into a list</h3>
+
+<p>Let's imagine that we have a singly linked list, that we want to be able to traverse in both directions. We'll create a new data structure for this traversal that will simply point at the position it's currently at.</p>
+
+<pre><code>    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+      ^
+      #</code></pre>
+
+<p>When we start at the beginning, this pointer will simply point to the list headed by <code>"h"</code>. From there, it can get the current value, and also move to the next element (its tail). Let's see what happens when we move to the right:</p>
+
+<pre><code>    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+           ^
+           #</code></pre>
+
+<p>Now the cursor is pointing to the list headed by <code>"e"</code>. It can move to the next element, but has no link back. Let's fix that!</p>
+
+<pre><code>    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+        \  ^
+           #</code></pre>
+
+<p>This looks ok, but when we move to the next element again, we can see the problem:</p>
+
+<pre><code>    [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+              \  ^
+                 #</code></pre>
+
+<p>Now the cursor can point to the <code>"e"</code>, but it has no way of going back to <code>"h"</code>. What we <i>really</i> need is another list, going in the opposite direction!</p>
+
+<pre><code>        [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+                     ^
+    ()&lt;-[h.]&lt;-[e.]&lt;- #</code></pre>
+
+<p>This is quite different from a doubly linked list! The links forwards and backwards are in fact in entirely different structures. There are no circular references at all. The cursor will start pointing to the head of the list, and an empty list pointing backwards:</p>
+
+<pre><code>        [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+         ^
+    ()&lt;- #</code></pre>
+
+<p>and finish off pointing at the empty end of the original list, and to a complete copy (in reverse order) of the list's contents.</p>
+
+<pre><code>        [h.]-&gt;[e.]-&gt;[l.]-&gt;[l.]-&gt;[o.]-&gt;()
+                                      ^
+    ()&lt;-[h.]&lt;-[e.]&lt;-[l.]&lt;-[l.]&lt;-[o.]&lt;-#</code></pre>
+
+<p>In fact, because of garbage collection, if there are no other references to the list's contents, the picture will be more like:</p>
+
+<pre><code>                                      ()
+                                      ^
+    ()&lt;-[h.]&lt;-[e.]&lt;-[l.]&lt;-[l.]&lt;-[o.]&lt;-#</code></pre>
+
+<p>We can travel back to the beginning, but we will end up with an entirely new list (albeit an identical copy) that what we started with.</p>
 
 </body>
 </html>
