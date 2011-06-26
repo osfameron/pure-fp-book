@@ -50,11 +50,11 @@
 
 <ul>
 
-<li>recursive thinking
+<li>recursive thinking</li>
 
-<li>data-sharing
+<li>data-sharing</li>
 
-<li>persistent data structures
+<li>persistent data structures</li>
 
 </ul>
 
@@ -62,11 +62,11 @@
 
 <ul>
 
-<li>ability to handle circular data
+<li>ability to handle circular data</li>
 
-<li>infinite lists and streams
+<li>infinite lists and streams</li>
 
-<li>possibility for automatic parallelisation
+<li>possibility for automatic parallelisation</li>
 
 </ul>
 
@@ -485,7 +485,7 @@
 
 <ul>
 
-<li>EXERCISE:</li>
+<li>EXERCISE:
 
 <p>Try to optimize <code>foldRight</code> by making it tail-recursive or iterative, as we saw above with <code>toArray</code></p>
 
@@ -741,33 +741,19 @@
 
 <ul>
 
-<li>List</li>
+<li><b>List</b> simple implementation for each case</li>
 
-<p>simple implementation for each case</p>
+<li><b>List</b> immutable data - the old version still exists, if you need it</li>
 
-<li>List</li>
+<li><b>List</b> no having to shunt the right hand side of the list around in memory</li>
 
-<p>immutable data - the old version still exists, if you need it</p>
+<li><b>List</b> no having to reallocate and move the entire structure as it grows and shrinks</li>
 
-<li>List</li>
+<li><b>Array</b> Very fast for updating single elements in place</li>
 
-<p>no having to shunt the right hand side of the list around in memory</p>
+<li><b>Array</b> No having to copy the left-hand side of the array each time</li>
 
-<li>List</li>
-
-<p>no having to reallocate and move the entire structure as it grows and shrinks</p>
-
-<li>Array</li>
-
-<p>Very fast for updating single elements in place</p>
-
-<li>Array</li>
-
-<p>No having to copy the left-hand side of the array each time</p>
-
-<li>Array</li>
-
-<p>The result will still be an array - this may be important if you will be doing a lot of random access into the array.</p>
+<li><b>Array</b> The result will still be an array - this may be important if you will be doing a lot of random access into the array.</li>
 
 </ul>
 
@@ -803,7 +789,7 @@
 
 <ul>
 
-<li>1 Cheat!
+<li>1. Cheat!
 
 <p>Though we're looking at purely functional data-structures, the fact remains that Perl, Python, Ruby, Javascript and friends are not purely functional languages. We <i>can</i> mutate values, when we need to, and nothing prevents us from writing:</p>
 
@@ -818,7 +804,7 @@
 
 <p>EXERCISE: I'll leave creating a list by cheating as an exercise to the interested reader.</p>
 
-<li>2 Use laziness
+<li>2. Use laziness
 
 <p>If we're being pure we can't <i>go back</i> and set the <code>next</code> field to the new object once we've constructed it. So, one solution would be to set the <code>next</code> to the value <i>before</i> we've constructed it!</p>
 
@@ -909,9 +895,9 @@
 
 <h4>Garbage collection</h4>
 
-<p>In Perl, memory is allocated using <i>reference counting</i>. Every time a value is referred to by something (a variable, or an object attribute) this is added to its reference count. When a reference is dropped, this is reduced. When the count reaches <code>0</code>, the object is garbage collected. Simples!</p>
+<p>In Perl, memory is allocated using <i>reference counting</i>. Every time a value is referred to by something (a variable, or an object attribute) this is added to its reference count. When a reference is dropped, this is reduced. When the count reaches <code>0</code>, the object is garbage collected.</p>
 
-<p>Indeed, for simple cases, this works perfectly. With a singly linked list, for example:</p>
+<p>Now, for simple cases, this works perfectly. With a singly linked list, for example:</p>
 
 <pre><code>    my $list = List-&gt;fromArray(1,2,3)
     
