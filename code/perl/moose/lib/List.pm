@@ -21,6 +21,9 @@ role List {
         );
     }
 
+    multi method isEmpty (List::Empty $self:) { 1 }
+    multi method isEmpty (List::Link  $self:) { 0 }
+
     # can be called as a class method
     multi method fromArray ($self:) {
         return List::Empty->new;
@@ -56,7 +59,10 @@ role List {
         }
         return @stack;
     }
+    {
+    no warnings 'once';
     *toArray = \&toArray_iterative;
+    }
 
     multi method take (List::Empty $self: Int $n) { 
         return $self;
@@ -158,6 +164,13 @@ role List {
             $self->tail->foldr_no_lazy($f, $acc),
         );
     }
+
+    method cursor {
+        List::Cursor->new(
+            prev => List::Empty->new,
+            next => $self,
+        )
+    }
 }
 
 class List::Link with List {
@@ -185,6 +198,63 @@ class List::Empty with List {
 
     method head { die "Can't take head of empty list!" }
     method tail { die "Can't take tail of empty list!" }
+}
+
+class List::Cursor {
+    has next => (
+        is => 'ro',
+        isa => 'List',
+    );
+    has prev => (
+        is => 'ro',
+        isa => 'List',
+    );
+
+    method value {
+        $self->next->head;
+    }
+
+    method canMoveNext {
+        return ! $self->next->tail->isEmpty;
+    }
+    method canMovePrev {
+        return ! $self->prev->isEmpty;
+    }
+
+    method moveNext {
+        $self->new(
+            next => $self->next->tail,
+            prev => List::Link->new(
+                head => $self->next->head,
+                tail => $self->prev,
+            )
+        );
+    }
+    method movePrev {
+        $self->new(
+            next => List::Link->new(
+                head => $self->prev->head,
+                tail => $self->next,
+            ),
+            prev => $self->prev->tail,
+        );
+    }
+    method moveFirst {
+        if ($self->canMovePrev) {
+            return $self->movePrev->moveFirst;
+        }
+        else {
+            return $self;
+        }
+    }
+    method moveLast {
+        if ($self->canMoveNext) {
+            return $self->moveNext->moveLast;
+        }
+        else {
+            return $self;
+        }
+    }
 }
 
 1;
