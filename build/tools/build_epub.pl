@@ -252,12 +252,12 @@ sub generate_ebook
     my $epub = EBook::EPUB->new();
 
     # Set the ePub metadata.
-    $epub->add_title('the Little Plack Book');
-    $epub->add_author('chromatic');
+    $epub->add_title('Purely Functional Datastructures for the Impure');
+    $epub->add_author('osfameron');
     $epub->add_language('en');
 
     # Add the book cover.
-    # add_cover($epub, './images/little_plack_book_cover_full.png');
+    # add_cover($epub, './images/pure_fp_book.png');
 
     # Add some other metadata to the OPF file.
     $epub->add_meta_item('EBook::EPUB version', $EBook::EPUB::VERSION);
@@ -285,7 +285,7 @@ sub generate_ebook
     mkdir $dir unless -e $dir;
 
     # Generate the ePub eBook.
-    my $filename = catfile(qw(build epub little_plack_book.epub));
+    my $filename = catfile(qw(build epub pure_fp_book.epub));
     $epub->pack_zip($filename);
 }
 
