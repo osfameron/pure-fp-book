@@ -1341,15 +1341,15 @@ and finish off pointing at the empty end of the original list, and to a complete
 copy (in reverse order) of the list's contents.
 
         [h.]->[e.]->[l.]->[l.]->[o.]->()
-                                      ^
-    ()<-[h.]<-[e.]<-[l.]<-[l.]<-[o.]<-#
+                                 ^
+    ()<-[h.]<-[e.]<-[l.]<-[l.]<- #
 
 In fact, because of garbage collection, if there are no other references to the
 list's contents, the picture will be more like:
 
-                                      ()
-                                      ^
-    ()<-[h.]<-[e.]<-[l.]<-[l.]<-[o.]<-#
+                                [o.]->()
+                                 ^
+    ()<-[h.]<-[e.]<-[l.]<-[l.]<- #
 
 We can travel back to the beginning, but we will end up with an entirely new
 list (albeit an identical copy) that what we started with.
