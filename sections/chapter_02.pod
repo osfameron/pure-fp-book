@@ -374,7 +374,7 @@ convert the function into an iterative one, that manages its own stack
 =back
 
 As far as I know, the best general tutorial to these methods using a dynamic
-programming language is Mark Jason Dominus's I<Higher Order Perl>.  It's not
+programming language is Mark Jason Dominus's I<Higher Order Perl>.  It's 
 freely available online at C<http://hop.perl.plover.com/> to check it out, 
 and it's well worth buying, whatever your programming language of choice.
 
