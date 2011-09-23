@@ -46,3 +46,7 @@ Perl Modules
     PERLER (Moritz Onken)
         http://beta.metacpan.org/module/MooseX::Attribute::Deflator
         (possibly model for MooseX::Promise?)
+
+    LEONERD
+        List::UtilsBy::bundle_by
+        pairmap / mapp
